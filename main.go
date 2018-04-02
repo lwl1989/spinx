@@ -19,7 +19,7 @@ func main(){
 	if path != "" {
 		real = path
 	}
-	real = "/www/spinx/src/config/server.json"
+	//real = "/www/spinx/src/config/server.json"
 
 	host = core.GetVhosts(real)
 	ports = host.GetPorts()
