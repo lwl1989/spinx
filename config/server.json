@@ -1,0 +1,31 @@
+{
+    "server": {
+        "port": "8081",
+        "log": "/tmp/spinx.log",
+        "keep_alive_timeout": 3,
+        "gzip_level": 1,
+        "cache": {
+            "len": 10240,
+            "expire": "24h"
+        }
+    },
+
+    "vhosts": [
+        {
+            "name": "www.test.com wwww.aaa.com",
+            "port": "18000",
+            "proxy":"127.0.0.1:9000",
+            "documentRoot": "/www/web/wordpress",
+            "tryFiles": "/index.php?$uri",
+            "index":  "index.php index.html"
+        },
+        {
+            "name": "www.phpmyadmin.com",
+            "port": "18000",
+            "proxy":"127.0.0.1:9000",
+            "documentRoot": "/www/web/phpmyadmin",
+            "tryFiles": "/index.php?$uri"
+
+        }
+    ]
+}
