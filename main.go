@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/spinx/core"
+	"github.com/lwl1989/spinx/core"
 	"net/http"
 	"fmt"
 //	"log"
