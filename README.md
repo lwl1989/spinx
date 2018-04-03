@@ -53,6 +53,51 @@ A golang fastcgi  proxy client.
 2. channel add
 3. keepalive support
 
+# ab test
+
+```
+new version test(wordpress):
+
+Server Software:        spinx
+Server Hostname:        www.test.com
+Server Port:            18000
+
+Document Path:          /
+Document Length:        53302 bytes
+
+Concurrency Level:      100
+Time taken for tests:   20.158 seconds
+Complete requests:      1000
+Failed requests:        0
+Total transferred:      53507000 bytes
+HTML transferred:       53302000 bytes
+Requests per second:    49.61 [#/sec] (mean)
+Time per request:       2015.799 [ms] (mean)
+Time per request:       20.158 [ms] (mean, across all concurrent requests)
+Transfer rate:          2592.17 [Kbytes/sec] received
+==========================================================
+Server Software:        nginx/1.13.9
+Server Hostname:        www.test.com
+Server Port:            18000
+
+Document Path:          /
+Document Length:        53302 bytes
+
+Concurrency Level:      100
+Time taken for tests:   20.277 seconds
+Complete requests:      1000
+Failed requests:        0
+Total transferred:      53548000 bytes
+HTML transferred:       53302000 bytes
+Requests per second:    49.32 [#/sec] (mean)
+Time per request:       2027.685 [ms] (mean)
+Time per request:       20.277 [ms] (mean, across all concurrent requests)
+Transfer rate:          2578.95 [Kbytes/sec] received
+=============================================================
+Performance has caught up with nginx.
+```
+
+
 # contact
 
     qq 285753421
