@@ -160,7 +160,7 @@ func (cgi *FCGIClient) writeBody(recType uint8, reqId uint16, req *Request) (err
 
 // bufWriter encapsulates bufio.Writer but also closes the underlying stream when
 // Closed.
-func (cgi *FCGIClient) GetRequest(w http.ResponseWriter, r *http.Request, env map[string]string) (req *Request) {
+func (cgi *FCGIClient) GetRequest(r *http.Request, env map[string]string) (req *Request) {
 	req = &Request{
 		Raw:    r,
 		Role:   roleResponder,
