@@ -3,9 +3,8 @@ package core
 import (
 	"net/http"
 	"os"
-	"strings"
-	"fmt"
 	"log"
+	"strings"
 )
 
 //if is static
@@ -19,20 +18,27 @@ type StaticFileHandler struct {
 
 
 //httpHandler listen host:port
+//type HttpHandler struct {
+//	Vhosts            Vhosts
+//	HandlerMap        map[string]*http.ServeMux
+//	Response          chan *Response
+//	StaticFile        chan *StaticFileHandler
+//	serverEnvironment map[string]string
+//	log               *log.Logger
+//}
 type HttpHandler struct {
 	Vhosts            Vhosts
 	HandlerMap        map[string]*http.ServeMux
-	Response          chan *Response
-	StaticFile        chan *StaticFileHandler
+	Response          *Response
+	StaticFile        *StaticFileHandler
 	serverEnvironment map[string]string
 	log               *log.Logger
 }
 
 func GetHandler() *HttpHandler {
 	return &HttpHandler{
-		Response:          make(chan *Response),
 		serverEnvironment: make(map[string]string, 0),
-		StaticFile:        make(chan *StaticFileHandler),
+		log:			log.New(os.Stdout,"[spinx]", log.LstdFlags),
 	}
 }
 //set logger to handler
@@ -45,21 +51,92 @@ func (httpHandler *HttpHandler)  GetLogger() *log.Logger {
 	return httpHandler.log
 }
 
+//func (httpHandler *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//
+//	if r.RequestURI == "/favicon.ico" {
+//		w.WriteHeader(200)
+//		w.Write([]byte(""))
+//		return
+//	}
+//	//reqParams := ""
+//	name, port := buildNamePort(r.Host)
+//
+//	hm, err := httpHandler.Vhosts.GetHostMap(port, name)
+//	if err != nil {
+//		respond(w, "<h1>404</h1>", 404, map[string]string{})
+//		return
+//	}
+//
+//	documentRoot := hm.DocumentRoot
+//	static := documentRoot + r.URL.Path
+//	fi,err := os.Stat(static)
+//	if err == nil && !fi.IsDir() {
+//		staticHandler := httpHandler.HandlerMap[name+port]
+//		staticHandler.ServeHTTP(w, r)
+//		return
+//	}
+//
+//	err, env := httpHandler.buildEnv(documentRoot, r)
+//
+//	var response *Response
+//	if err != nil {
+//		response = GetResponseByContent(403, nil, nil, "not allow")
+//	} else {
+//
+//		fileCode,_ := httpHandler.buildServerHttp(r, env, hm)
+//		if FileCodeTry == fileCode {
+//			tryFiles(r.RequestURI, hm.TryFiles, env)
+//		}
+//		fcgi, err := New(hm.Net, hm.Addr)
+//
+//		req := fcgi.GetRequest(r, env)
+//		//fmt.Println(req,res,err)
+//		if err != nil {
+//			fmt.Printf("err: %v", err)
+//		}
+//
+//		content, _, err := fcgi.DoRequest(req)
+//
+//		if err != nil {
+//			fmt.Printf("ERROR: %s  %v", r.URL.Path, err)
+//		}
+//		response = GetResponse(fmt.Sprintf("%s", content))
+//	}
+//
+//	response.send(w, r)
+//}
 //listen http do some things
 func (httpHandler *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	go httpHandler.Run(r)
-	for {
-		select {
-		case response := <-httpHandler.Response:
-			response.send(w, r)
-		case hand := <-httpHandler.StaticFile:
-			staticHandler := httpHandler.HandlerMap[hand.Host+hand.Port]
-			staticHandler.ServeHTTP(w, r)
+	//log.Println(r.RequestURI)
+	httpHandler.Run(r)
 
-		default:
-			respond(w, "<h1>404</h1>", 404, map[string]string{})
-		}
+	if httpHandler.StaticFile != nil {
+		staticHandler := httpHandler.HandlerMap[httpHandler.StaticFile.Host+httpHandler.StaticFile.Port]
+		staticHandler.ServeHTTP(w, r)
+		return
 	}
+
+	if httpHandler.Response != nil {
+		httpHandler.Response.send(w, r)
+		return
+	}
+
+
+
+	respond(w, "<h1>404</h1>", 404, map[string]string{})
+	//go httpHandler.Run(r)
+	//
+	//select {
+	//	case response := <-httpHandler.Response:
+	//		response.send(w, r)
+	//	case hand := <-httpHandler.StaticFile:
+	//		staticHandler := httpHandler.HandlerMap[hand.Host+hand.Port]
+	//		staticHandler.ServeHTTP(w, r)
+	//
+	//	default:
+	//		respond(w, "<h1>404</h1>", 404, map[string]string{})
+	//}
+
 }
 
 /**
@@ -68,7 +145,7 @@ return file like http code
 1 exit file
 success is 0
  */
-func (httpHandler *HttpHandler) buildServerHttp(r *http.Request, env map[string]string, hm *HostMap) (code int, filename string) {
+func (httpHandler *HttpHandler) buildServerHttp(r *http.Request, env map[string]string, hm *HostMap) (code uint8, filename string) {
 	//name,port := buildNamePort(r.Host)
 	filename = env["SCRIPT_FILENAME"]
 	file, err := os.Stat(filename)
@@ -76,20 +153,15 @@ func (httpHandler *HttpHandler) buildServerHttp(r *http.Request, env map[string]
 	if err == nil {
 		if file.IsDir() {
 			filename = getScriptFile(filename, hm.Index)
-			if filename == "" {
-				return FileCodeNotFound, ""
-			}
+			return FileCodeTry, filename
+			//if filename == "" {
+			//	return FileCodeNotFound, ""
+			//}
 		}
 	} else {
-		return FileCodeStatic, filename
-	}
-
-	if !strings.HasSuffix(filename, ".php") {
-		fmt.Println(filename)
-		//tryFiles(r.RequestURI, hm.TryFiles, env)
-
 		return FileCodeTry, filename
 	}
+
 	env["SCRIPT_FILENAME"] = filename
 	return FileExecute, filename
 }

@@ -5,10 +5,11 @@ import (
 	"strings"
 	"errors"
 	"fmt"
+	"os"
 )
 
 const (
-	FileCodeStatic = 1
+	FileCodeStatic uint8 = 1
 	FileCodeTry	   = 2
 	FileExecute	   = 3
 	FileCodeNotFound = 4
@@ -19,7 +20,7 @@ const (
 // or do httpHandler.StaticFile <- StaticFileHandler
 func (httpHandler *HttpHandler) Run(r *http.Request) {
 	if r.RequestURI == "/favicon.ico" {
-		httpHandler.Response <- &Response{200, map[string]string{}, nil, ""}
+		httpHandler.Response = &Response{200, map[string]string{}, nil, ""}
 		return
 	}
 	//reqParams := ""
@@ -27,40 +28,45 @@ func (httpHandler *HttpHandler) Run(r *http.Request) {
 
 	hm, err := httpHandler.Vhosts.GetHostMap(port, name)
 	if err != nil {
-		httpHandler.Response <- &Response{200, map[string]string{}, nil, "<h1>404</h1>"}
+		httpHandler.Response = &Response{200, map[string]string{}, nil, "<h1>404</h1>"}
 		return
 	}
 
 	documentRoot := hm.DocumentRoot
 
+	static := documentRoot + r.URL.Path
+	fi,err := os.Stat(static)
+	if err == nil && !fi.IsDir() {
+		httpHandler.StaticFile = &StaticFileHandler{
+			name,
+			port,
+			"",
+		}
+		return
+	}
+
 	err, env := httpHandler.buildEnv(documentRoot, r)
 
 	var response *Response
 	if err != nil {
-
+		httpHandler.log.Println(err)
+		httpHandler.log.Println(env)
 		response = GetResponseByContent(403, nil, nil, "not allow")
 
 	} else {
 
-		fileCode,filename := httpHandler.buildServerHttp(r, env, hm)
+		fileCode,_ := httpHandler.buildServerHttp(r, env, hm)
 
-		switch fileCode {
-		case FileCodeStatic:
-			httpHandler.StaticFile <- &StaticFileHandler{
-				name,
-				port,
-				filename,
-			}
-			return
+		if fileCode == FileCodeTry {
+			tryFiles(r.RequestURI, hm.TryFiles, env)
+		}
 
-		case FileCodeNotFound:
+		if fileCode == FileCodeNotFound {
 			response = &Response{404,nil,nil,"<h1>404</h1>"}
 			return
-		case FileCodeTry:
-			tryFiles(r.RequestURI, hm.TryFiles, env)
-		default:
-
 		}
+
+
 		fcgi, err := New(hm.Net, hm.Addr)
 
 		req := fcgi.GetRequest(r, env)
@@ -79,8 +85,71 @@ func (httpHandler *HttpHandler) Run(r *http.Request) {
 
 	}
 
-	httpHandler.Response <- response
+	httpHandler.Response = response
 }
+//func (httpHandler *HttpHandler) Run(r *http.Request) {
+//	if r.RequestURI == "/favicon.ico" {
+//		httpHandler.Response <- &Response{200, map[string]string{}, nil, ""}
+//		return
+//	}
+//	//reqParams := ""
+//	name, port := buildNamePort(r.Host)
+//
+//	hm, err := httpHandler.Vhosts.GetHostMap(port, name)
+//	if err != nil {
+//		httpHandler.Response <- &Response{200, map[string]string{}, nil, "<h1>404</h1>"}
+//		return
+//	}
+//
+//	documentRoot := hm.DocumentRoot
+//
+//	err, env := httpHandler.buildEnv(documentRoot, r)
+//
+//	var response *Response
+//	if err != nil {
+//		httpHandler.log.Println(err)
+//		httpHandler.log.Println(env)
+//		response = GetResponseByContent(403, nil, nil, "not allow")
+//
+//	} else {
+//
+//		fileCode,filename := httpHandler.buildServerHttp(r, env, hm)
+//		switch fileCode {
+//		case FileCodeStatic:
+//			httpHandler.StaticFile <- &StaticFileHandler{
+//				name,
+//				port,
+//				filename,
+//			}
+//			return
+//
+//		case FileCodeNotFound:
+//			response = &Response{404,nil,nil,"<h1>404</h1>"}
+//			return
+//		case FileCodeTry:
+//			tryFiles(r.RequestURI, hm.TryFiles, env)
+//
+//		}
+//		fcgi, err := New(hm.Net, hm.Addr)
+//
+//		req := fcgi.GetRequest(r, env)
+//
+//		if err != nil {
+//			httpHandler.log.Printf("err: %v", err)
+//		}
+//
+//		content, _, err := fcgi.DoRequest(req)
+//
+//		if err != nil {
+//			httpHandler.log.Printf("ERROR: %s - %v", r.URL.Path, err)
+//		}
+//
+//		response = GetResponse(fmt.Sprintf("%s", content))
+//
+//	}
+//
+//	httpHandler.Response <- response
+//}
 
 //build a header map with fcgi header
 func (httpHandler *HttpHandler) buildEnv(documentRoot string, r *http.Request) (err error, env map[string]string) {
@@ -137,5 +206,5 @@ func (httpHandler *HttpHandler) buildEnv(documentRoot string, r *http.Request) (
 	env["CONTENT_LENGTH"] = r.Header.Get("Content-Length")
 	env["CONTENT_TYPE"] = r.Header.Get("Content-Type")
 	//log.Println()
-	return errors.New("not allow"), env
+	return nil, env
 }
