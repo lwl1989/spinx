@@ -11,6 +11,7 @@ const (
 	maxPad   = 255
 )
 
+//It's fcgi header
 type header struct {
 	Version       uint8
 	Type          uint8

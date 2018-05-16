@@ -101,7 +101,7 @@ func read(cookiesArr []string) []*http.Cookie {
 
 
 
-
+//valid cookie is available
 func validCookieValueByte(b byte) bool {
 	return 0x20 <= b && b < 0x7f && b != '"' && b != ';' && b != '\\'
 }
@@ -118,6 +118,7 @@ func parseCookieValue(raw string, allowDoubleQuote bool) (string, bool) {
 	}
 	return raw, true
 }
+
 
 func isCookieNameValid(raw string) bool {
 	if raw == "" {

@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-
+//User request
 type Request struct {
 	Raw      *http.Request
 	Role     uint8

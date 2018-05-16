@@ -13,6 +13,10 @@ const (
 	FileExecute	   = 3
 	FileCodeNotFound = 4
 )
+
+//is corouine fun
+// do  httpHandler.Response <- Response
+// or do httpHandler.StaticFile <- StaticFileHandler
 func (httpHandler *HttpHandler) Run(r *http.Request) {
 	if r.RequestURI == "/favicon.ico" {
 		httpHandler.Response <- &Response{200, map[string]string{}, nil, ""}
@@ -78,6 +82,7 @@ func (httpHandler *HttpHandler) Run(r *http.Request) {
 	httpHandler.Response <- response
 }
 
+//build a header map with fcgi header
 func (httpHandler *HttpHandler) buildEnv(documentRoot string, r *http.Request) (err error, env map[string]string) {
 	env = make(map[string]string)
 	index := "index.php"

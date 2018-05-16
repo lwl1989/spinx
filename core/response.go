@@ -8,7 +8,7 @@ import (
 )
 
 
-
+//User response
 type Response struct {
 	code uint16
 	headers map[string]string

@@ -54,6 +54,7 @@ type FCGIClient struct {
 	buf       bytes.Buffer
 }
 
+//get new fcgi proxy
 func New(rule ,addr string) (fcgi *FCGIClient, err error) {
 	var conn net.Conn
 	//fastcgi_pass  127.0.0.1:9000;
@@ -68,6 +69,7 @@ func New(rule ,addr string) (fcgi *FCGIClient, err error) {
 	return
 }
 
+//write content to proxy
 func (cgi *FCGIClient) writeRecord(recType uint8, reqId uint16, content []byte) (err error) {
 	cgi.mutex.Lock()
 	defer cgi.mutex.Unlock()
@@ -87,15 +89,18 @@ func (cgi *FCGIClient) writeRecord(recType uint8, reqId uint16, content []byte) 
 	return err
 }
 
+//write fcgi abort flag
 func (cgi *FCGIClient) writeAbortRequest(reqId uint16) error {
 	return cgi.writeRecord(typeAbortRequest, reqId, nil)
 }
 
+//write fcgi begin flag
 func (cgi *FCGIClient) writeBeginRequest(reqId uint16, role uint8, flags uint8) error {
 	b := [8]byte{byte(role >> 8), byte(role), flags}
 	return cgi.writeRecord(typeBeginRequest, reqId, b[:])
 }
 
+//write fcgi end
 func (cgi *FCGIClient) writeEndRequest(reqId uint16, appStatus int, protocolStatus uint8) error {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint32(b, uint32(appStatus))
@@ -103,6 +108,7 @@ func (cgi *FCGIClient) writeEndRequest(reqId uint16, appStatus int, protocolStat
 	return cgi.writeRecord(typeEndRequest, reqId, b)
 }
 
+//write fcgi header
 func (cgi *FCGIClient) writePairs(recType uint8, reqId uint16, pairs map[string]string) error {
 	w := newWriter(cgi, recType, reqId)
 
@@ -125,6 +131,7 @@ func (cgi *FCGIClient) writePairs(recType uint8, reqId uint16, pairs map[string]
 	return w.Close()
 }
 
+//write content with http content
 func (cgi *FCGIClient) writeBody(recType uint8, reqId uint16, req *Request) (err error) {
 	// write the stdin stream
 	stdinWriter := newWriter(cgi, recType, reqId)
@@ -171,6 +178,9 @@ func (cgi *FCGIClient) GetRequest(r *http.Request, env map[string]string) (req *
 	return req
 }
 
+
+//if is proxy request
+//do request and get response
 func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte, err error) {
 	pool := GetIdPool(65535)
 	reqId  := pool.Alloc()

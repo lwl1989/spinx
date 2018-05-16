@@ -10,6 +10,7 @@ type bufWriter struct {
 	*bufio.Writer
 }
 
+// close BuffWrite impl io.Closer
 func (b *bufWriter) Close() error {
 	if err := b.Writer.Flush(); err != nil {
 		b.closer.Close()
@@ -18,7 +19,7 @@ func (b *bufWriter) Close() error {
 	return b.closer.Close()
 }
 
-
+//get a new buf
 func newWriter(c *FCGIClient, recType uint8, reqId uint16) *bufWriter {
 	s := &streamWriter{c: c, recType: recType, reqId: reqId}
 	return &bufWriter{s, bufio.NewWriterSize(s, maxWrite)}
@@ -32,6 +33,7 @@ type streamWriter struct {
 	reqId   uint16
 }
 
+//write stream impl io.Writer
 func (w *streamWriter) Write(p []byte) (int, error) {
 	nn := 0
 	for len(p) > 0 {
@@ -58,7 +60,7 @@ func (w *streamWriter) Write(p []byte) (int, error) {
 	}
 	return nn, nil
 }
-
+//write stream impl io.Closer
 func (w *streamWriter) Close() error {
 	// send empty record to close the stream
 	return w.c.writeRecord(w.recType, w.reqId, nil)

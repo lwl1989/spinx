@@ -8,11 +8,17 @@ import (
 	"log"
 )
 
+//if is static
+//need host port to response
+//the next version want cache file
 type StaticFileHandler struct {
 	Host     string
 	Port     string
 	FilePath string
 }
+
+
+//httpHandler listen host:port
 type HttpHandler struct {
 	Vhosts            Vhosts
 	HandlerMap        map[string]*http.ServeMux
@@ -29,15 +35,17 @@ func GetHandler() *HttpHandler {
 		StaticFile:        make(chan *StaticFileHandler),
 	}
 }
-
+//set logger to handler
 func (httpHandler *HttpHandler) SetLogger(log *log.Logger) {
 	httpHandler.log = log
 }
 
+//get logger from handler
 func (httpHandler *HttpHandler)  GetLogger() *log.Logger {
 	return httpHandler.log
 }
 
+//listen http do some things
 func (httpHandler *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go httpHandler.Run(r)
 	for {
