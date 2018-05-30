@@ -116,7 +116,6 @@ Time per request:       6.773 [ms] (mean)
 Time per request:       0.068 [ms] (mean, across all concurrent requests)
 Transfer rate:          2508.74 [Kbytes/sec] received
 =============================================================
-Performance has caught up with nginx.
 ```
 
 
