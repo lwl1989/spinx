@@ -4,11 +4,21 @@ A golang fastcgi  proxy client.
 # quick start
 
     go get github.com/lwl1989/spinx
+    
     cd $gopath/src/github.com/lwl1989/spinx
-    go build
-    ./spinx
-
-    Please input your config path(default /usr/etc/spinx/server.json):
+    
+    go build -o spinx main.go
+    
+#### install    
+    sudo ./spinx  -c=config_path install
+#### remove    
+    sudo ./spinx  remove
+#### start
+    sudo ./spinx start
+    or
+    ./spinx -d=false -c=config_path
+#### stop
+    sudo ./spinx stop    
 
 # change log 
 
@@ -16,6 +26,12 @@ A golang fastcgi  proxy client.
   
     1. add handler coroutine
     2. add logger(handler.SetLogger(log))
+
+2018-05-30
+    
+    1. add daemon
+    2. add cmd set config and list help
+    3. add to system service
 
     
 # config.json demo
