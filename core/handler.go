@@ -84,6 +84,12 @@ func (httpHandler *HttpHandler)  GetLogger() *log.Logger {
 //	} else {
 //
 //		fileCode,_ := httpHandler.buildServerHttp(r, env, hm)
+//		//fmt.Println(filename)
+//		//if fileCode == FileCodeStatic {
+//		//	staticHandler := httpHandler.HandlerMap[name+port]
+//		//	staticHandler.ServeHTTP(w, r)
+//		//	return
+//		//} else
 //		if FileCodeTry == fileCode {
 //			tryFiles(r.RequestURI, hm.TryFiles, env)
 //		}
@@ -162,6 +168,9 @@ func (httpHandler *HttpHandler) buildServerHttp(r *http.Request, env map[string]
 		return FileCodeTry, filename
 	}
 
+	if !strings.HasSuffix(filename, ".php") {
+		return FileCodeStatic, filename
+	}
 	env["SCRIPT_FILENAME"] = filename
 	return FileExecute, filename
 }

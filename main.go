@@ -2,62 +2,35 @@ package main
 
 import (
 	"github.com/lwl1989/spinx/core"
-	"net/http"
-	"fmt"
 //	"log"
-	"log"
+	"github.com/lwl1989/spinx/cmd"
+	"github.com/lwl1989/spinx/daemon"
 )
 
-var host core.Vhosts
-var ports []string
-
-var handlerMap map[string]*http.ServeMux
 func main(){
-	path,real := "","/usr/etc/spinx/server.json"
-	fmt.Println("Please input your config path(default /usr/etc/spinx/server.json): ")
-	fmt.Scanln(&path)
-	if path != "" {
-		real = path
-	}
-	//real = "/www/spinx/src/config/server.json"
+	c := cmd.GetCommand()
 
-	host = core.GetVhosts(real)
-	ports = host.GetPorts()
-	handler := core.GetHandler()
-	handlerMap = make(map[string]*http.ServeMux)
-	handler.Vhosts = host
+	h := c.Get("help")
+	path := c.Get("config")
 
-	handler.HandlerMap = handlerMap
-
-	namePortsListen := make([]string,0)
-	for _,port := range ports {
-		names := host.GetNames(port)
-		//fmt.Println(names)
-		for _,name := range names{
-			hMap,err := host.GetHostMap(port,name)
-			if err != nil {
-				log.Fatal("port:"+port+" name:"+name+" config is not found")
-				continue
-			}
-			staticHandler := http.NewServeMux()
-			staticHandler.Handle("/", http.FileServer(http.Dir(hMap.DocumentRoot)))
-			handlerMap[name+port] = staticHandler
-			//http.HandleFunc("/", handler)
-			listen := "localhost"
-			if port != "80" {
-				listen = listen+":"+port
-			}
-			namePortsListen = append(namePortsListen, listen)
-		}
+	if h != "" {
+		cmd.ShowHelp()
+		return
 	}
 
-
-	for _,listen := range namePortsListen {
-		err := http.ListenAndServe(listen, handler)
-		fmt.Println(err)
+	if path == "" {
+		cmd.ShowHelp()
+		return
 	}
 
-	fmt.Printf("Press Ctrl-C to quit.\n")
+	config := core.GetVhosts(path)
+	isDaemon := c.Get("daemon")
+
+	if isDaemon == "0" {
+		daemon.Run(config)
+	}else{
+		daemon.RunDaemon(config)
+	}
 }
 
 

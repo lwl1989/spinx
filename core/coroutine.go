@@ -37,6 +37,7 @@ func (httpHandler *HttpHandler) Run(r *http.Request) {
 	static := documentRoot + r.URL.Path
 	fi,err := os.Stat(static)
 	if err == nil && !fi.IsDir() {
+		fmt.Println(static, r.URL.Path)
 		httpHandler.StaticFile = &StaticFileHandler{
 			name,
 			port,
