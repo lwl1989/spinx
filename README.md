@@ -78,43 +78,43 @@ A golang fastcgi  proxy client.
 # ab test
 
 ```
-new version test(wordpress):
-
+new version(hello world! PHP 7.2.3):
 Server Software:        spinx
 Server Hostname:        www.test.com
 Server Port:            18000
 
 Document Path:          /
-Document Length:        53302 bytes
+Document Length:        12 bytes
 
 Concurrency Level:      100
-Time taken for tests:   20.158 seconds
-Complete requests:      1000
+Time taken for tests:   7.151 seconds
+Complete requests:      100000
 Failed requests:        0
-Total transferred:      53507000 bytes
-HTML transferred:       53302000 bytes
-Requests per second:    49.61 [#/sec] (mean)
-Time per request:       2015.799 [ms] (mean)
-Time per request:       20.158 [ms] (mean, across all concurrent requests)
-Transfer rate:          2592.17 [Kbytes/sec] received
+Total transferred:      15300000 bytes
+HTML transferred:       1200000 bytes
+Requests per second:    13983.36 [#/sec] (mean)
+Time per request:       7.151 [ms] (mean)
+Time per request:       0.072 [ms] (mean, across all concurrent requests)
+Transfer rate:          2089.31 [Kbytes/sec] received
+
 ==========================================================
 Server Software:        nginx/1.13.9
-Server Hostname:        www.test.com
-Server Port:            18000
+Server Hostname:        www.word.com
+Server Port:            80
 
 Document Path:          /
-Document Length:        53302 bytes
+Document Length:        12 bytes
 
 Concurrency Level:      100
-Time taken for tests:   20.277 seconds
-Complete requests:      1000
+Time taken for tests:   6.773 seconds
+Complete requests:      100000
 Failed requests:        0
-Total transferred:      53548000 bytes
-HTML transferred:       53302000 bytes
-Requests per second:    49.32 [#/sec] (mean)
-Time per request:       2027.685 [ms] (mean)
-Time per request:       20.277 [ms] (mean, across all concurrent requests)
-Transfer rate:          2578.95 [Kbytes/sec] received
+Total transferred:      17400000 bytes
+HTML transferred:       1200000 bytes
+Requests per second:    14764.09 [#/sec] (mean)
+Time per request:       6.773 [ms] (mean)
+Time per request:       0.068 [ms] (mean, across all concurrent requests)
+Transfer rate:          2508.74 [Kbytes/sec] received
 =============================================================
 Performance has caught up with nginx.
 ```
