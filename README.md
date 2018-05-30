@@ -72,9 +72,8 @@ A golang fastcgi  proxy client.
 
 # The next Step
 
-1. ssl support
-2. channel add
-3. keepalive support
+1. change to other  faster http core
+2. keepalive support If need
 
 # ab test
 
