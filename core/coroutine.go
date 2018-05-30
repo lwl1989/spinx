@@ -5,7 +5,6 @@ import (
 	"strings"
 	"errors"
 	"fmt"
-	"os"
 )
 
 const (
@@ -34,18 +33,6 @@ func (httpHandler *HttpHandler) Run(r *http.Request) {
 
 	documentRoot := hm.DocumentRoot
 
-	static := documentRoot + r.URL.Path
-	fi,err := os.Stat(static)
-	if err == nil && !fi.IsDir() {
-		fmt.Println(static, r.URL.Path)
-		httpHandler.StaticFile = &StaticFileHandler{
-			name,
-			port,
-			"",
-		}
-		return
-	}
-
 	err, env := httpHandler.buildEnv(documentRoot, r)
 
 	var response *Response
@@ -56,7 +43,19 @@ func (httpHandler *HttpHandler) Run(r *http.Request) {
 
 	} else {
 
-		fileCode,_ := httpHandler.buildServerHttp(r, env, hm)
+		fileCode,filename := httpHandler.buildServerHttp(r, env, hm)
+
+		if fileCode == FileCodeStatic {
+
+
+				httpHandler.StaticFile = &StaticFileHandler{
+					name,
+					port,
+					filename,
+				}
+				return
+
+		}
 
 		if fileCode == FileCodeTry {
 			tryFiles(r.RequestURI, hm.TryFiles, env)

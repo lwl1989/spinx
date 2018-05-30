@@ -28,7 +28,7 @@ func GetVhosts(path string) Vhosts {
 	if err != nil {
 		fmt.Println(err)
 		log.Fatal("lode config err")
-		panic("lode config err")
+		return nil
 	}
 
 	config := c.Get("vhosts")

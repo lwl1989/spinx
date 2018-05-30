@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/lwl1989/spinx/core"
-//	"log"
+	"log"
 	"github.com/lwl1989/spinx/cmd"
 	"github.com/lwl1989/spinx/daemon"
 )
@@ -24,7 +24,10 @@ func main(){
 	}
 
 	config := core.GetVhosts(path)
-	isDaemon := c.Get("daemon")
+	if config == nil {
+		log.Panic("config not load")
+	}
+ 	isDaemon := c.Get("daemon")
 
 	if isDaemon == "0" {
 		daemon.Run(config)
