@@ -218,6 +218,7 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 	// recive untill EOF or FCGI_END_REQUEST
 	for {
 		err1 = rec.read(cgi.rwc)
+		//if !keep-alive the end has EOF
 		if err1 != nil {
 			if err1 != io.EOF {
 				err = err1
@@ -231,7 +232,7 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 		case rec.h.Type == typeStderr:
 			reterr = append(reterr, rec.content()...)
 		case rec.h.Type == typeEndRequest:
-			//todo: if keep-alive
+			//if keep-alive
 			//It's had return
 			//But connection Not close
 			retout = append(retout, rec.content()...)
