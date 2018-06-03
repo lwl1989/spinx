@@ -14,6 +14,7 @@ import (
 	"net"
 	"sync"
 	"net/http"
+	"fmt"
 )
 
 const (
@@ -189,9 +190,9 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 	defer cgi.rwc.Close()
 
 	if request.KeepConn {
-		//err = cgi.writeBeginRequest(reqId, roleResponder, 1)
-		//todo: is keepAlived
-		err = cgi.writeBeginRequest(reqId, roleResponder, 0)
+		//if it's keep-alive
+		//set flags 1
+		err = cgi.writeBeginRequest(reqId, roleResponder, 1)
 	} else {
 		err = cgi.writeBeginRequest(reqId, roleResponder, 0)
 	}
@@ -208,11 +209,9 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 	n,_ :=request.Stdin.Read(p)
 	err = cgi.writeRecord(typeStdin, reqId, p[:n])
 	err = cgi.writeRecord(typeStdin, reqId, nil)
-	//err = cgi.writeBody(FCGI_STDIN, reqId, request)
-	//if err != nil {
-	//	return
-	//}
-
+	if err != nil {
+		return
+	}
 	rec := &record{}
 	var err1 error
 
@@ -225,15 +224,20 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 			}
 			break
 		}
+
 		switch {
 		case rec.h.Type == typeStdout:
 			retout = append(retout, rec.content()...)
 		case rec.h.Type == typeStderr:
 			reterr = append(reterr, rec.content()...)
 		case rec.h.Type == typeEndRequest:
-			fallthrough
+			//todo: if keep-alive
+			//It's had return
+			//But connection Not close
+			retout = append(retout, rec.content()...)
+			return
 		default:
-			break
+			//fallthrough
 		}
 	}
 

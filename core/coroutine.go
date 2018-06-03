@@ -37,8 +37,6 @@ func (httpHandler *HttpHandler) Run(r *http.Request) {
 
 	var response *Response
 	if err != nil {
-		httpHandler.log.Println(err)
-		httpHandler.log.Println(env)
 		response = GetResponseByContent(403, nil, nil, "not allow")
 
 	} else {

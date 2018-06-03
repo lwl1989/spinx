@@ -33,7 +33,10 @@ A golang fastcgi  proxy client.
     2. add cmd set config and list help
     3. add to system service
 
-    
+2018-06-03
+
+    1. keep-alive support
+
 # config.json demo
 
 ```
@@ -73,7 +76,7 @@ A golang fastcgi  proxy client.
 # The next Step
 
 1. change to other  faster http core
-2. keepalive support If need
+2. keepalive timer  set
 
 # ab test
 
