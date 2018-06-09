@@ -215,6 +215,7 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 	var err1 error
 
 	// recive untill EOF or FCGI_END_REQUEST
+	// todo :if time out  add  Connection: close
 	for {
 		err1 = rec.read(cgi.rwc)
 		//if !keep-alive the end has EOF
