@@ -183,8 +183,8 @@ func (cgi *FCGIClient) GetRequest(r *http.Request, env map[string]string) (req *
 //do request and get response
 func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte, err error) {
 	pool := GetIdPool(65535)
-	reqId  := pool.Alloc()
-	defer cgi.writeEndRequest(reqId,200,0)
+	reqId := pool.Alloc()
+	defer cgi.writeEndRequest(reqId, 200, 0)
 	defer pool.Release(reqId)
 	defer cgi.rwc.Close()
 
@@ -204,8 +204,8 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 	if err != nil {
 		return
 	}
-	p := make([]byte,1024)
-	n,_ :=request.Stdin.Read(p)
+	p := make([]byte, 1024)
+	n, _ := request.Stdin.Read(p)
 	err = cgi.writeRecord(typeStdin, reqId, p[:n])
 	err = cgi.writeRecord(typeStdin, reqId, nil)
 	if err != nil {
@@ -213,6 +213,22 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 	}
 	rec := &record{}
 	var err1 error
+
+	//思路错了
+	// 应该是   用户请求->golang http ->my proxy->fastcgi
+	// 但是     golang http每个用户请求已经是产生了一个协成然后我获取的已经是一个底层的链接了
+	// 只能    自己处理http协议 然后 通过  如果是一个 keep-alive
+	// 则   连接保持为长连接 然后 没处理一次请求 max -1 同时产生一个定时器 当定时器到了 也直接return
+	// 伪代码：
+	// newTimer(timeoutSecond).add()  //对没处理完的链接发出502
+	// while(max > 1) {
+	//	when user -> request
+	//  max --;
+	//  connectId add to []connection
+	//  go send(connectId) //
+	//  go read(connectId) //读取返回
+	// }
+
 
 	// recive untill EOF or FCGI_END_REQUEST
 	// todo :if time out  add  Connection: close
