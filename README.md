@@ -1,7 +1,10 @@
 # spinx
 A golang fastcgi  proxy client.
 
+# 新计划
 
+1. 自己实现http协议处理
+2. 更好的使用缓存的代理功能(参考Nginx)
 
 
 # contact
