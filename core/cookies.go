@@ -5,7 +5,7 @@ import (
 	"time"
 	"strconv"
 	"net/http"
-	"golang.org/x/net/lex/httplex"
+
 )
 
 
@@ -129,5 +129,6 @@ func isCookieNameValid(raw string) bool {
 
 
 func isNotToken(r rune) bool {
-	return !httplex.IsTokenRune(r)
+	return true
+	//return !httplex.IsTokenRune(r)
 }

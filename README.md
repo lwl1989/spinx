@@ -1,5 +1,10 @@
 # spinx
+
 A golang fastcgi  proxy client.
+
+Contributors:
+* LI WEN LONG
+* Emre
 
 # quick start
 
@@ -9,15 +14,20 @@ A golang fastcgi  proxy client.
     
     go build -o spinx main.go
     
-#### install    
+#### install
+
     sudo ./spinx  -c=config_path install
-#### remove    
+#### remove
+
     sudo ./spinx  remove
 #### start
+
     sudo ./spinx start
     or
     ./spinx -d=false -c=config_path
+
 #### stop
+
     sudo ./spinx stop    
 
 # change log 
