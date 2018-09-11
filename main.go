@@ -5,9 +5,12 @@ import (
 	"log"
 	"github.com/lwl1989/spinx/cmd"
 	"github.com/lwl1989/spinx/daemon"
+	"github.com/lwl1989/spinx/http"
 )
 
 func main(){
+	http.Do()
+	return
 	c := cmd.GetCommand()
 
 	h := c.Get("help")
