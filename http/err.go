@@ -12,3 +12,8 @@ func GetError(code uint16, msg string) Error {
 		value:msg,
 	}
 }
+
+
+func GetRenderHtml(code uint16) []byte {
+	return make([]byte, 0)
+}
