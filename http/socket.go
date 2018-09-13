@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 	"log"
+	"github.com/lwl1989/spinx/http/fcgi"
 )
 
 
@@ -14,7 +15,7 @@ func HandleConn(conn net.Conn) []byte {
 	conn.SetDeadline(time.Unix(time.Now().Unix()+5,0))
 	conn.SetReadDeadline(time.Unix(time.Now().Unix()+5,0))
 
-	return Read(conn)
+	return fcgi.Read(conn)
 }
 
 func Do()  {
