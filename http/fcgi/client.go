@@ -12,7 +12,7 @@ import (
  */
 
 type CgiClient struct {
-	req         []byte
+	req         *Request
 	res 		[]byte
 	response 	net.Conn
 
@@ -45,7 +45,7 @@ func (fpm *CgiClient) Request(config conf.Conf) {
 	}
 
 	//fmt.Println("connect success")
-	conn.Write(fpm.req)
+	conn.Write(fpm.req.buf)
 
 	fpm.res = Read(conn)
 }
