@@ -2,7 +2,6 @@ package fcgi
 
 import (
 	"net"
-	"github.com/jingweno/conf"
 	"fmt"
 	"os"
 )
@@ -18,18 +17,29 @@ type CgiClient struct {
 
 }
 
+func GetCgiClient(response net.Conn) *CgiClient {
+	return &CgiClient{
+		req:GetRequest(),
+		res:make([]byte,0),
+		response:response,
+	}
+}
+
 func (fpm *CgiClient) Read(buf []byte) (n int, err error) {
 	//todo:数据写往RES
-	return 0, nil
+	fpm.res = buf
+	return len(buf), nil
 }
 
 func (fpm *CgiClient) Write(buf []byte) (n int, err error)  {
 	//todo:数据写往REQ
-	return 0, nil
+	fpm.req.buf = buf
+	return len(buf), nil
 }
 
 //请求后端
-func (fpm *CgiClient) Request(config conf.Conf) {
+func (fpm *CgiClient) Proxy() {
+	//config conf.Conf
 	//todo:获取到server
 	server := "127.0.0.1:8888"
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)

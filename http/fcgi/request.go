@@ -8,10 +8,13 @@ const ENTER_SPACE  = "\n"
 const REQUEST_URL  = "Request URL:"
 
 type Request struct {
-	buf []byte
+	Id  uint16
+	header []byte
+	content []byte
 	Host string
 	Port string
 	Header map[string]string  //必要设置的Header
+	KeepConn bool
 	pos position
 }
 

@@ -36,6 +36,8 @@ func (h *header) init(recType uint8, reqID uint16, contentLength int) {
 type record struct {
 	h   header
 	buf [maxWrite + maxPad]byte
+	received chan bool
+	err chan error
 }
 
 func (rec *record) read(r io.Reader) (err error) {
@@ -52,6 +54,6 @@ func (rec *record) read(r io.Reader) (err error) {
 	return nil
 }
 
-func (r *record) content() []byte {
-	return r.buf[:r.h.ContentLength]
+func (rec *record) content() []byte {
+	return rec.buf[:rec.h.ContentLength]
 }

@@ -6,7 +6,8 @@ import (
 	"bytes"
 	"net"
 	"encoding/binary"
-	"net/http"
+	"time"
+	"errors"
 )
 
 const (
@@ -102,71 +103,45 @@ func (cgi *FCGIClient) writeEndRequest(reqId uint16, appStatus int, protocolStat
 }
 
 //write fcgi header
-func (cgi *FCGIClient) writePairs(recType uint8, reqId uint16, pairs map[string]string) error {
-	w := newWriter(cgi, recType, reqId)
-
-
-	b := make([]byte, 8)
-	for k, v := range pairs {
-		n := encodeSize(b, uint32(len(k)))
-		n += encodeSize(b[n:], uint32(len(v)))
-
-		if _, err := w.Write(b[:n]); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(k); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(v); err != nil {
-			return err
-		}
-	}
-	return w.Close()
+func (cgi *FCGIClient) writeHeader(recType uint8, reqId uint16, req *Request) error {
+	writer := newWriter(cgi, recType, reqId)
+	defer writer.Close()
+	_, err := writer.Write(req.content[:])
+	//b := make([]byte, 8)
+	//for k, v := range pairs {
+	//	n := encodeSize(b, uint32(len(k)))
+	//	n += encodeSize(b[n:], uint32(len(v)))
+	//
+	//	if _, err := w.Write(b[:n]); err != nil {
+	//		return err
+	//	}
+	//	if _, err := w.WriteString(k); err != nil {
+	//		return err
+	//	}
+	//	if _, err := w.WriteString(v); err != nil {
+	//		return err
+	//	}
+	//}
+	return err
 }
 
 //write content with http content
 func (cgi *FCGIClient) writeBody(recType uint8, reqId uint16, req *Request) (err error) {
 	// write the stdin stream
-	stdinWriter := newWriter(cgi, recType, reqId)
-	if req.Stdin != nil {
-		defer req.Stdin.Close()
-		p := make([]byte, 1024)
-		var count int
-		for {
-			count, err = req.Stdin.Read(p)
-			if err == io.EOF {
-				err = nil
-			} else if err != nil {
-				stdinWriter.Close()
-				return err
-			}
-			if count == 0 {
-				break
-			}
-
-			_, err = stdinWriter.Write(p[:count])
-			if err != nil {
-				stdinWriter.Close()
-				return err
-			}
-		}
-
-	}
-	if err = stdinWriter.Close(); err != nil {
-		return err
-	}
+	writer := newWriter(cgi, recType, reqId)
+	defer writer.Close()
+	_, err = writer.Write(req.content[:])
 	return nil
 }
 
 // bufWriter encapsulates bufio.Writer but also closes the underlying stream when
 // Closed.
-func (cgi *FCGIClient) GetRequest(r *http.Request, env map[string]string) (req *Request) {
+func GetRequest() (req *Request) {
+	pool := GetIdPool(65535)
+	reqId := pool.Alloc()
 	req = &Request{
-		Raw:    r,
-		Role:   roleResponder,
-		Params: env,
-		Stdin:	r.Body,
-		KeepConn: r.Header.Get("Connection") == "keep-alive",
+		Id: reqId,
+		KeepConn:false,
 	}
 	return req
 }
@@ -174,9 +149,8 @@ func (cgi *FCGIClient) GetRequest(r *http.Request, env map[string]string) (req *
 
 //if is proxy request
 //do request and get response
-func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte, err error) {
-	pool := GetIdPool(65535)
-	reqId := pool.Alloc()
+func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, err error) {
+	reqId := request.Id
 	defer cgi.writeEndRequest(reqId, 200, 0)
 	defer pool.Release(reqId)
 	defer cgi.rwc.Close()
@@ -194,20 +168,19 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 	}
 
 	//err = cgi.writePairs(typeParams, reqId, request.Params)
-	err = cgi.writeRecord(typeParams, reqId, request.buf[request.pos.HStart:request.pos.HEnd])
+	err = cgi.writeHeader(typeParams, reqId, request)
 	if err != nil {
 		return
 	}
-
+	//todo: 这个时间应该从配置中读取
+	timer := time.NewTimer(5*time.Second)
 	//p := make([]byte, 1024)
 	//n, _ := request.Stdin.Read(p)
 	//err = cgi.writeRecord(typeStdin, reqId, p[:n])
-	err = cgi.writeRecord(typeStdin, reqId, nil)
+	err = cgi.writeBody(typeStdin, reqId, request)
 	if err != nil {
 		return
 	}
-	rec := &record{}
-	var err1 error
 
 	//思路错了
 	// 应该是   用户请求->golang http ->my proxy->fastcgi
@@ -223,35 +196,54 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, reterr []byte
 	//  go send(connectId) //
 	//  go read(connectId) //读取返回
 	// }
-
-
+	rec := &record{}
+	go readResponse(cgi, rec)
 	// recive untill EOF or FCGI_END_REQUEST
 	// todo :if time out  add  Connection: close
 	for {
-		err1 = rec.read(cgi.rwc)
-		//if !keep-alive the end has EOF
-		if err1 != nil {
-			if err1 != io.EOF {
-				err = err1
-			}
+		select {
+		case <- timer.C:
+			//超时发送终止请求
+			cgi.writeEndRequest(reqId, 502, 1)
+		    err = errors.New("502 timeout")
 			break
-		}
-
-		switch {
-		case rec.h.Type == typeStdout:
-			retout = append(retout, rec.content()...)
-		case rec.h.Type == typeStderr:
-			reterr = append(reterr, rec.content()...)
-		case rec.h.Type == typeEndRequest:
-			//if keep-alive
-			//It's had return
-			//But connection Not close
-			retout = append(retout, rec.content()...)
-			return
-		default:
-			//fallthrough
+		case <-rec.received:
+			retout = rec.content()
+			break
+		case e:= <-rec.err:
+			err = e
+			break
 		}
 	}
 
-	return
+	return retout,err
+}
+
+func readResponse(cgi *FCGIClient,rec *record) {
+
+	err1 := rec.read(cgi.rwc)
+	//if !keep-alive the end has EOF
+	if err1 != nil {
+		if err1 != io.EOF {
+			rec.err <- err1
+		}else{
+			rec.received <- true
+		}
+	}else {
+		rec.received <- true
+	}
+	//switch {
+	//case rec.h.Type == typeStdout:
+	//	rec.content() = append(rec.content(), rec.content()...)
+	//case rec.h.Type == typeStderr:
+	//	rec.content = append(rec.content(), rec.content()...)
+	//case rec.h.Type == typeEndRequest:
+	//	//if keep-alive
+	//	//It's had return
+	//	//But connection Not close
+	//	retout = append(retout, rec.content()...)
+	//	return
+	//default:
+	//	//fallthrough
+	//}
 }

@@ -35,6 +35,9 @@ func Do()  {
 			break
 		}else{
 			buf := HandleConn(Conn)
+			cgiClient := fcgi.GetCgiClient(Conn)
+			cgiClient.Proxy()
+			cgiClient.Response()
 			log.Println(string(buf[:]))
 		}
 		i++

@@ -37,8 +37,5 @@ func GetIdPool(limit uint16) *IdPool {
 		}(uint16(limit - 1))
 		pool =  &IdPool{IDs:ids}
 	})
-	//sync.Once.Do(func() {
-	//
-	//})
 	return pool
 }
