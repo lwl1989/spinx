@@ -46,6 +46,8 @@ type FCGIClient struct {
 
 	h         header
 	buf       bytes.Buffer
+
+	request   *Request
 }
 
 //get new fcgi proxy
@@ -136,13 +138,17 @@ func (cgi *FCGIClient) writeBody(recType uint8, reqId uint16, req *Request) (err
 
 // bufWriter encapsulates bufio.Writer but also closes the underlying stream when
 // Closed.
-func GetRequest() (req *Request) {
+func GetRequest(bytes []byte) (req *Request) {
 	pool := GetIdPool(65535)
 	reqId := pool.Alloc()
 	req = &Request{
 		Id: reqId,
 		KeepConn:false,
+		content:bytes,
 	}
+	cgi,_ := New("127.0.0.1","8000")
+
+	cgi.request = req
 	return req
 }
 

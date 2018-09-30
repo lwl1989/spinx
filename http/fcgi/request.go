@@ -9,7 +9,6 @@ const REQUEST_URL  = "Request URL:"
 
 type Request struct {
 	Id  uint16
-	header []byte
 	content []byte
 	Host string
 	Port string

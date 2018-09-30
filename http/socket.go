@@ -5,6 +5,7 @@ import (
 	"time"
 	"log"
 	"github.com/lwl1989/spinx/http/fcgi"
+	"fmt"
 )
 
 
@@ -27,20 +28,29 @@ func Do()  {
 	defer l.Close()
 	log.Println("listen ok")
 
-	var i int
 	for {
-		time.Sleep(time.Second * 10)
-		if Conn, err := l.Accept(); err != nil {
+		Conn, err := l.Accept()
+		//time.Sleep(time.Second * 10)
+		if err != nil {
 			log.Println("accept error:", err)
-			break
-		}else{
-			buf := HandleConn(Conn)
-			cgiClient := fcgi.GetCgiClient(Conn)
-			cgiClient.Proxy()
-			cgiClient.Response()
-			log.Println(string(buf[:]))
+			time.Sleep(time.Second * 10)
+			continue
 		}
-		i++
-		log.Printf("%d: accept a new connection\n", i)
+		buf := HandleConn(Conn)
+		//fmt.Println(string(buf))
+		var last byte
+		for _,v := range buf {
+			b := make([]byte,0)
+
+			if last == byte(10) && last == v {
+				fmt.Println("http头结束")
+				fmt.Println(string(b[:]))
+				fmt.Println("正文开始")
+			}
+			fmt.Println(last,v)
+			last = v
+		}
+		return
+		go fcgi.GetRequest(buf)
 	}
 }

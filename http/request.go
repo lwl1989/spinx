@@ -18,5 +18,5 @@ func newTextprotoReader(br *bufio.Reader) *textproto.Reader {
 }
 
 func readRequest(b *bufio.Reader, deleteHostHeader bool) (err error) {
-
+	return nil
 }
