@@ -37,19 +37,51 @@ func Do()  {
 			continue
 		}
 		buf := HandleConn(Conn)
+		//var last byte
 		//fmt.Println(string(buf))
-		var last byte
-		for _,v := range buf {
-			b := make([]byte,0)
+		last := make([]byte,0)
+		var enter byte = 13
+		var line byte = 10
 
-			if last == byte(10) && last == v {
-				fmt.Println("http头结束")
-				fmt.Println(string(b[:]))
-				fmt.Println("正文开始")
+		//拆解一个http头
+		//第一行 额外处理 以空格为分割
+		//GET /dsafddsf/gfdghfdhfghj/jghjhg?dafds HTTP/1.1
+		//其他行 以第一个冒号为分割
+		//Host: localhost:8888
+		//Connection: keep-alive
+		//Cache-Control: max-age=0
+		//Upgrade-Insecure-Requests: 1
+		//User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36
+		//Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+		//Accept-Encoding: gzip, deflate, br
+		//Accept-Language: zh-CN,zh;q=0.9
+		b := make([]byte,0)
+		for _,v := range buf {
+
+			l := len(last)
+			b = append(b, v)
+			if v == line {
+				if l == 1 {
+					last = append(last, v)
+				}
+				if l == 3 {
+					fmt.Println("http头结束")
+					fmt.Println(string(b[:]))
+					fmt.Println("正文开始")
+					return
+				}
+			} else {
+				if l > 3 {
+					last = make([]byte,0)
+				}
+				if v == enter {
+					last = append(last, v)
+				}else{
+					last = make([]byte,0)
+				}
 			}
-			fmt.Println(last,v)
-			last = v
 		}
+		fmt.Println(string(b[:]))
 		return
 		go fcgi.GetRequest(buf)
 	}
