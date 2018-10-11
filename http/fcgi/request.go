@@ -17,6 +17,7 @@ type Request struct {
 	Header map[string]string  //必要设置的Header
 	KeepConn bool
 	pos position
+	content []byte
 }
 
 //记录流的位置

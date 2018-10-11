@@ -10,6 +10,7 @@ import (
 	"errors"
 	"bufio"
 	"fmt"
+	"net/http"
 )
 
 const (
@@ -148,33 +149,38 @@ func GetRequest(conn net.Conn) (req *Request) {
 		KeepConn:false,
 		rwc: bufio.NewReader(conn),
 	}
-
+	response := &http.Response{}
 	l, _, err := req.rwc.ReadLine()
 	if err != nil {
-		panic("parse Request error")
+		panic("parse Request error "+err.Error())
 	}
 	Method, RequestURI, Proto, ok := ParseRequestLine(string(l[:]))
 
 	if !ok {
-		panic("parse Request error")
+		panic("parse Request error"+err.Error())
 	}
 	fmt.Println(Method, RequestURI, Proto, ok)
 
 	//Host: localhost:8888
 	l, _, err = req.rwc.ReadLine()
 	if err != nil {
-		panic("parse Request error")
+		panic("parse Request error"+err.Error())
 	}
 
 	req.Host, req.Port, ok = ParseHostLine(string(l[:]))
 	if !ok {
-		panic("parse Request error")
+		panic("parse Request error"+err.Error())
 	}
 	fmt.Println(string(l[:]))
+	conn.Write(bytes.NewBufferString("HTTP/1.1  404 \r\n\r\n<h1>404</h1>").Bytes())
+	defer conn.Close()
+	response.StatusCode = 404
+
+	//response.Body = bytes.NewReader()
 	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
 	//最后进行转发
 	cgi,_ := New("127.0.0.1","8000")
-
+	conn.Write(bytes.NewBufferString("").Bytes())
 	cgi.request = req
 	return req
 }
