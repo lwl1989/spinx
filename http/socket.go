@@ -6,6 +6,8 @@ import (
 	"log"
 	"github.com/lwl1989/spinx/http/fcgi"
 	"fmt"
+	"bufio"
+	"io"
 )
 
 
@@ -13,10 +15,14 @@ import (
 func HandleConn(conn net.Conn) []byte {
 	defer conn.Close()
 
-	conn.SetDeadline(time.Unix(time.Now().Unix()+5,0))
-	conn.SetReadDeadline(time.Unix(time.Now().Unix()+5,0))
+	//conn.SetDeadline(time.Unix(time.Now().Unix()+5,0))
+	//conn.SetReadDeadline(time.Unix(time.Now().Unix()+5,0))
 
 	return fcgi.Read(conn)
+}
+
+func newBufioReader(r io.Reader) *bufio.Reader {
+	return bufio.NewReader(r)
 }
 
 func Do()  {
@@ -36,6 +42,16 @@ func Do()  {
 			time.Sleep(time.Second * 10)
 			continue
 		}
+		//get request
+		bio := newBufioReader(Conn)
+		l, _, err := bio.ReadLine()
+		Method, RequestURI, Proto, ok := fcgi.ParseRequestLine(string(l[:]))
+		fmt.Println(Method, RequestURI, Proto, ok)
+
+		//Host: localhost:8888
+		l, _, err = bio.ReadLine()
+		fmt.Println(string(l[:]))
+		return
 		buf := HandleConn(Conn)
 		//var last byte
 		//fmt.Println(string(buf))
@@ -55,6 +71,7 @@ func Do()  {
 		//Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
 		//Accept-Encoding: gzip, deflate, br
 		//Accept-Language: zh-CN,zh;q=0.9
+		fmt.Println(string(buf[:]))
 		b := make([]byte,0)
 		for _,v := range buf {
 
