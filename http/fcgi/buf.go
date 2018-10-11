@@ -45,6 +45,21 @@ func ParseRequestLine(line string) (method, requestURI, proto string, ok bool) {
 	return line[:s1], line[s1+1 : s2], line[s2+1:], true
 }
 
+//parse host line "HOST: localhost:8000"
+func ParseHostLine(line string) (host, port string, ok bool) {
+	port = "80"
+	s1 := strings.Index(line, " ")
+	if s1 < 0 {
+		return
+	}
+	s2 := strings.Index(line[s1+1:], ":")
+	if s2 < 0 {
+		host = line[s1+1:]
+		return host,port,true
+	}
+	return line[s1+1:s2],line[s2+1:],true
+}
+
 type bufWriter struct {
 	closer io.Closer
 	*bufio.Writer

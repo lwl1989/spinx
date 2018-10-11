@@ -1,5 +1,7 @@
 package fcgi
 
+import "bufio"
+
 //用于获取头的位置
 const SPLIT_STR  =  "\n\n"
 //用户获取特定头
@@ -9,7 +11,7 @@ const REQUEST_URL  = "Request URL:"
 
 type Request struct {
 	Id  uint16
-	content []byte
+	rwc *bufio.Reader
 	Host string
 	Port string
 	Header map[string]string  //必要设置的Header

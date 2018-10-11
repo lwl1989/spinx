@@ -8,6 +8,8 @@ import (
 	"encoding/binary"
 	"time"
 	"errors"
+	"bufio"
+	"fmt"
 )
 
 const (
@@ -132,20 +134,45 @@ func (cgi *FCGIClient) writeBody(recType uint8, reqId uint16, req *Request) (err
 	// write the stdin stream
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
-	_, err = writer.Write(req.content[:])
+	//_, err = writer.Write(req.content[:])
 	return nil
 }
 
 // bufWriter encapsulates bufio.Writer but also closes the underlying stream when
 // Closed.
-func GetRequest(bytes []byte) (req *Request) {
+func GetRequest(conn net.Conn) (req *Request) {
 	pool := GetIdPool(65535)
 	reqId := pool.Alloc()
 	req = &Request{
 		Id: reqId,
 		KeepConn:false,
-		content:bytes,
+		rwc: bufio.NewReader(conn),
 	}
+
+	l, _, err := req.rwc.ReadLine()
+	if err != nil {
+		panic("parse Request error")
+	}
+	Method, RequestURI, Proto, ok := ParseRequestLine(string(l[:]))
+
+	if !ok {
+		panic("parse Request error")
+	}
+	fmt.Println(Method, RequestURI, Proto, ok)
+
+	//Host: localhost:8888
+	l, _, err = req.rwc.ReadLine()
+	if err != nil {
+		panic("parse Request error")
+	}
+
+	req.Host, req.Port, ok = ParseHostLine(string(l[:]))
+	if !ok {
+		panic("parse Request error")
+	}
+	fmt.Println(string(l[:]))
+	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
+	//最后进行转发
 	cgi,_ := New("127.0.0.1","8000")
 
 	cgi.request = req
