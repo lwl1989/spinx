@@ -6,6 +6,7 @@ import (
 	"github.com/lwl1989/spinx/cmd"
 	"github.com/lwl1989/spinx/daemon"
 	"github.com/lwl1989/spinx/http"
+	"github.com/lwl1989/spinx/conf"
 )
 
 func main(){
@@ -21,6 +22,7 @@ func main(){
 	//fmt.Println(b)
 	//fmt.Println(b1)
 	//return
+	conf.GetVhosts("config/server.json")
 	http.Do()
 	return
 	c := cmd.GetCommand()

@@ -10,7 +10,7 @@ import (
 	"errors"
 	"bufio"
 	"fmt"
-	"net/http"
+	"github.com/lwl1989/spinx/conf"
 )
 
 const (
@@ -141,50 +141,88 @@ func (cgi *FCGIClient) writeBody(recType uint8, reqId uint16, req *Request) (err
 
 // bufWriter encapsulates bufio.Writer but also closes the underlying stream when
 // Closed.
-func GetRequest(conn net.Conn) (req *Request) {
+func Handler(conn net.Conn) {
 	pool := GetIdPool(65535)
 	reqId := pool.Alloc()
-	req = &Request{
+	//close connection and release id
+	defer func() {
+		conn.Close()
+		pool.Release(reqId)
+	}()
+
+
+	req := &Request{
 		Id: reqId,
 		KeepConn:false,
 		rwc: bufio.NewReader(conn),
 	}
-	response := &http.Response{}
+
 	l, _, err := req.rwc.ReadLine()
 	if err != nil {
-		panic("parse Request error "+err.Error())
+		Response(conn, "500", "")
+		return
 	}
 	Method, RequestURI, Proto, ok := ParseRequestLine(string(l[:]))
 
 	if !ok {
-		panic("parse Request error"+err.Error())
+		Response(conn, "500", "")
+		return
 	}
 	fmt.Println(Method, RequestURI, Proto, ok)
 
 	//Host: localhost:8888
 	l, _, err = req.rwc.ReadLine()
 	if err != nil {
-		panic("parse Request error"+err.Error())
+		Response(conn, "404", "")
+		return
 	}
 
 	req.Host, req.Port, ok = ParseHostLine(string(l[:]))
 	if !ok {
-		panic("parse Request error"+err.Error())
+		Response(conn, "404", "")
+		return
 	}
-	fmt.Println(string(l[:]))
-	conn.Write(bytes.NewBufferString("HTTP/1.1  404 \r\n\r\n<h1>404</h1>").Bytes())
-	defer conn.Close()
-	response.StatusCode = 404
+
+	i := 0
+	for ; ;  {
+		l, _, err = req.rwc.ReadLine()
+		//正文这里结束了，因为readLine会跳过换行
+		if len(l) == 0 {
+			i++
+			break
+		}
+	//	fmt.Println(string(l[:]))
+	}
+	fmt.Println(i)
+	for ; ; {
+		b, e := req.rwc.ReadByte()
+		fmt.Println(b,e)
+	}
 
 	//response.Body = bytes.NewReader()
 	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
 	//最后进行转发
-	cgi,_ := New("127.0.0.1","8000")
-	conn.Write(bytes.NewBufferString("").Bytes())
+	cf,err := conf.HostMaps.GetHostMap(req.Host, req.Port)
+	if err != nil {
+		Response(conn, "404", "")
+		return
+	}
+	cgi,_ := New(cf.Net, cf.Addr)
 	cgi.request = req
-	return req
+
+	content, err := cgi.DoRequest(req)
+	if err != nil {
+		Response(conn, "500", "")
+		return
+	}
+
+	content = append(bytes.NewBufferString("HTTP/1.1  200").Bytes(), content...)
+	conn.Write(content)
 }
 
+func Response(conn net.Conn, code, content string) {
+	conn.Write(bytes.NewBufferString("HTTP/1.1  "+code+" \r\n\r\n<h1>"+code+"</h1>").Bytes())
+}
 
 //if is proxy request
 //do request and get response
@@ -206,35 +244,17 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, err error) {
 		return
 	}
 
-	//err = cgi.writePairs(typeParams, reqId, request.Params)
 	err = cgi.writeHeader(typeParams, reqId, request)
 	if err != nil {
 		return
 	}
 	//todo: 这个时间应该从配置中读取
 	timer := time.NewTimer(5*time.Second)
-	//p := make([]byte, 1024)
-	//n, _ := request.Stdin.Read(p)
-	//err = cgi.writeRecord(typeStdin, reqId, p[:n])
 	err = cgi.writeBody(typeStdin, reqId, request)
 	if err != nil {
 		return
 	}
 
-	//思路错了
-	// 应该是   用户请求->golang http ->my proxy->fastcgi
-	// 但是     golang http每个用户请求已经是产生了一个协成然后我获取的已经是一个底层的链接了
-	// 只能    自己处理http协议 然后 通过  如果是一个 keep-alive
-	// 则   连接保持为长连接 然后 没处理一次请求 max -1 同时产生一个定时器 当定时器到了 也直接return
-	// 伪代码：
-	// newTimer(timeoutSecond).add()  //对没处理完的链接发出502
-	// while(max > 1) {
-	//	when user -> request
-	//  max --;
-	//  connectId add to []connection
-	//  go send(connectId) //
-	//  go read(connectId) //读取返回
-	// }
 	rec := &record{}
 	go readResponse(cgi, rec)
 	// recive untill EOF or FCGI_END_REQUEST

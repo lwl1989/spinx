@@ -36,6 +36,6 @@ func Do()  {
 			time.Sleep(time.Second * 10)
 			continue
 		}
-		go fcgi.GetRequest(Conn)
+		go fcgi.Handler(Conn)
 	}
 }
