@@ -193,6 +193,10 @@ func Handler(conn net.Conn) {
 		}
 	//	fmt.Println(string(l[:]))
 	}
+	//HEADER END \r\n
+	//\r\n  continue
+	//BODY
+	//因此跳过的行数是1
 	fmt.Println(i)
 	for ; ; {
 		b, e := req.rwc.ReadByte()
