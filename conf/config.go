@@ -97,6 +97,7 @@ func (vhosts Vhosts) GetHostMap(port,host string) (*HostMap,error) {
 	}
 	return vhosts[port][host],nil
 }
+
 func (vhosts Vhosts) Get(port,host,key string) string {
 	hMap := vhosts[port][host]
 	object := reflect.ValueOf(hMap)

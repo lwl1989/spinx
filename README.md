@@ -18,24 +18,9 @@ Contributors:
 
 # change log 
 
-2018-5-14
-  
-    1. add handler coroutine
-    2. add logger(handler.SetLogger(log))
-
-2018-05-30
-    
-    1. add daemon
-    2. add cmd set config and list help
-    3. add to system service
-
-2018-06-03
-
-    1. keep-alive support
-
 2018-10-17
 
-    1. v2 init
+    1. v2 init,rewrite core
     2. self parse protocol
 
 
