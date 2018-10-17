@@ -53,11 +53,12 @@ func ParseHostLine(line string) (host, port string, ok bool) {
 		return
 	}
 	s2 := strings.Index(line[s1+1:], ":")
+
 	if s2 < 0 {
 		host = line[s1+1:]
 		return host,port,true
 	}
-	return line[s1+1:s2],line[s2+1:],true
+	return line[s1+1:s2+s1+1],line[s2+s1+2:],true
 }
 
 type bufWriter struct {

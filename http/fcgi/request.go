@@ -1,6 +1,9 @@
 package fcgi
 
-import "bufio"
+import (
+	"bufio"
+	"github.com/lwl1989/spinx/conf"
+)
 
 //用于获取头的位置
 const SPLIT_STR  =  "\n\n"
@@ -18,6 +21,8 @@ type Request struct {
 	KeepConn bool
 	pos position
 	content []byte
+	cf	*conf.HostMap
+	Method, RequestURI, Proto string
 }
 
 //记录流的位置

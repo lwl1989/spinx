@@ -9,8 +9,9 @@ import (
 	"time"
 	"errors"
 	"bufio"
-	"fmt"
 	"github.com/lwl1989/spinx/conf"
+	"strings"
+	"strconv"
 )
 
 const (
@@ -61,7 +62,7 @@ func New(rule ,addr string) (fcgi *FCGIClient, err error) {
 	if rule != "unix" {
 		rule = "tcp"
 	}
-	conn, err = net.Dial(rule,addr)
+	conn, err = net.DialTimeout(rule,addr, 3*time.Second)
 	fcgi = &FCGIClient{
 		rwc:       conn,
 	}
@@ -108,25 +109,57 @@ func (cgi *FCGIClient) writeEndRequest(reqId uint16, appStatus int, protocolStat
 }
 
 //write fcgi header
-func (cgi *FCGIClient) writeHeader(recType uint8, reqId uint16, req *Request) error {
+func (cgi *FCGIClient) writeHeader(recType uint8, reqId uint16, req *Request) (err error) {
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
-	_, err := writer.Write(req.content[:])
-	//b := make([]byte, 8)
-	//for k, v := range pairs {
-	//	n := encodeSize(b, uint32(len(k)))
-	//	n += encodeSize(b[n:], uint32(len(v)))
-	//
-	//	if _, err := w.Write(b[:n]); err != nil {
-	//		return err
-	//	}
-	//	if _, err := w.WriteString(k); err != nil {
-	//		return err
-	//	}
-	//	if _, err := w.WriteString(v); err != nil {
-	//		return err
-	//	}
-	//}
+
+	headers := make(map[string]string)
+	for ; ; {
+		by := make([]byte, 0)
+		by,_,err := req.rwc.ReadLine()
+		if len(by) == 0 {
+			break
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		str := string(by[:])
+		s1 := strings.Index(str, ":")
+		if s1>0 {
+			headers[str[:s1]] = str[s1+1:]
+		}
+		//by = append(by, 13, 10)
+	}
+
+	err,pairs := buildEnv(req)
+	if err != nil {
+		return err
+	}
+
+	for k,v := range headers {
+		pairs["HTTP_"+strings.Replace(strings.ToUpper(k), "-", "_", -1)] = v
+	}
+
+	//_, err := writer.Write(req.content[:])
+	b := make([]byte, 8)
+	for k, v := range pairs {
+		//fmt.Println(k,v)
+		n := encodeSize(b, uint32(len(k)))
+		n += encodeSize(b[n:], uint32(len(v)))
+		//fmt.Println(k,v,b[:n])
+		if _, err := writer.Write(b[:n]); err != nil {
+			return err
+		}
+		if _, err := writer.WriteString(k); err != nil {
+			return err
+		}
+		if _, err := writer.WriteString(v); err != nil {
+			return err
+		}
+	}
 	return err
 }
 
@@ -135,6 +168,52 @@ func (cgi *FCGIClient) writeBody(recType uint8, reqId uint16, req *Request) (err
 	// write the stdin stream
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
+	cgi.buf.Reset()
+	l,err := strconv.Atoi(req.Header["CONTENT_LENGTH"])
+	if err != nil {
+		l = 0
+	}
+	cgi.h.init(recType, reqId, l)
+
+	if err := binary.Write(&cgi.buf, binary.BigEndian, cgi.h); err != nil {
+		return err
+	}
+	if l > 0 {
+		var bs = make([]byte,0)
+		le,err := io.ReadFull(req.rwc, bs)
+		if err != nil {
+			return err
+		}
+		if le != l {
+			return errors.New("lens error")
+		}
+		if _, err := cgi.buf.Write(bs); err != nil {
+			return err
+		}
+	}
+
+	if _, err := cgi.buf.Write(pad[:cgi.h.PaddingLength]); err != nil {
+		return err
+	}
+	_, err = cgi.rwc.Write(cgi.buf.Bytes())
+	return err
+	//b,err := req.rwc.ReadByte()
+	//fmt.Println(err, b)
+	for ;; {
+		by := make([]byte, 0)
+		by,_,err := req.rwc.ReadLine()
+
+		if len(by) == 0 {
+			break
+		}
+		if err == io.EOF {
+			break
+		}
+		_, err = writer.Write(by)
+		if err != nil {
+			return err
+		}
+	}
 	//_, err = writer.Write(req.content[:])
 	return nil
 }
@@ -162,13 +241,14 @@ func Handler(conn net.Conn) {
 		Response(conn, "500", "")
 		return
 	}
-	Method, RequestURI, Proto, ok := ParseRequestLine(string(l[:]))
-
+	var ok bool
+	req.Method, req.RequestURI, req.Proto, ok = ParseRequestLine(string(l[:]))
+	req.Method = strings.ToUpper(req.Method)
 	if !ok {
 		Response(conn, "500", "")
 		return
 	}
-	fmt.Println(Method, RequestURI, Proto, ok)
+	//fmt.Println(Method, RequestURI, Proto, ok)
 
 	//Host: localhost:8888
 	l, _, err = req.rwc.ReadLine()
@@ -183,49 +263,57 @@ func Handler(conn net.Conn) {
 		return
 	}
 
-	i := 0
-	for ; ;  {
-		l, _, err = req.rwc.ReadLine()
-		//正文这里结束了，因为readLine会跳过换行
-		if len(l) == 0 {
-			i++
-			break
-		}
-	//	fmt.Println(string(l[:]))
-	}
-	//HEADER END \r\n
-	//\r\n  continue
-	//BODY
-	//因此跳过的行数是1
-	fmt.Println(i)
-	for ; ; {
-		b, e := req.rwc.ReadByte()
-		fmt.Println(b,e)
-	}
-
-	//response.Body = bytes.NewReader()
-	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
-	//最后进行转发
-	cf,err := conf.HostMaps.GetHostMap(req.Host, req.Port)
+	cf,err := conf.HostMaps.GetHostMap(req.Port, req.Host)
 	if err != nil {
 		Response(conn, "404", "")
 		return
 	}
-	cgi,_ := New(cf.Net, cf.Addr)
-	cgi.request = req
 
-	content, err := cgi.DoRequest(req)
+	req.cf = cf
+	//i := 0
+	//for ; ;  {
+	//	l, _, err = req.rwc.ReadLine()
+	//	//正文这里结束了，因为readLine会跳过换行
+	//	if len(l) == 0 {
+	//		i++
+	//		break
+	//	}
+	////	fmt.Println(string(l[:]))
+	//}
+	//HEADER END \r\n
+	//\r\n  continue
+	//BODY
+	//因此跳过的行数是1
+	//fmt.Println(i)
+	//for ; ; {
+	//	b, e := req.rwc.ReadByte()
+	//	fmt.Println(b,e)
+	//}
+
+	//response.Body = bytes.NewReader()
+	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
+	//最后进行转发
+
+	cgi,err := New(cf.Net, cf.Addr)
+	cgi.request = req
 	if err != nil {
-		Response(conn, "500", "")
+		Response(conn, "502", err.Error())
 		return
 	}
 
-	content = append(bytes.NewBufferString("HTTP/1.1  200").Bytes(), content...)
+	content, err := cgi.DoRequest(req)
+
+	if err != nil {
+		Response(conn, "500", err.Error())
+		return
+	}
+
+	content = append(bytes.NewBufferString("HTTP/1.1 200").Bytes(), content...)
 	conn.Write(content)
 }
 
 func Response(conn net.Conn, code, content string) {
-	conn.Write(bytes.NewBufferString("HTTP/1.1  "+code+" \r\n\r\n<h1>"+code+"</h1>").Bytes())
+	conn.Write(bytes.NewBufferString("HTTP/1.1  "+code+" \r\n\r\n<h1>"+code+"</h1><p>"+content+"</p>").Bytes())
 }
 
 //if is proxy request
@@ -245,22 +333,29 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, err error) {
 	}
 
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	err = cgi.writeHeader(typeParams, reqId, request)
 	if err != nil {
-		return
+		return nil, err
 	}
 	//todo: 这个时间应该从配置中读取
-	timer := time.NewTimer(5*time.Second)
-	err = cgi.writeBody(typeStdin, reqId, request)
-	if err != nil {
-		return
+	timer := time.NewTimer(1*time.Second)
+
+	if request.Method != "GET" && request.Method != "HEAD" {
+		err = cgi.writeBody(typeStdin, reqId, request)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	rec := &record{}
-	go readResponse(cgi, rec)
+	res := &ResponseContent{
+		received:make(chan bool),
+		err:make(chan error),
+		buf:make([]byte,0),
+	}
+	go readResponse(cgi, res)
 	// recive untill EOF or FCGI_END_REQUEST
 	// todo :if time out  add  Connection: close
 	for {
@@ -269,44 +364,55 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, err error) {
 			//超时发送终止请求
 			cgi.writeEndRequest(reqId, 502, 1)
 		    err = errors.New("502 timeout")
-			break
-		case <-rec.received:
-			retout = rec.content()
-			break
-		case e:= <-rec.err:
+			return retout,err
+		case <-res.received:
+			retout = res.content()
+			//fmt.Println(string(retout[:])+" has received")
+			//fmt.Println(string(res.buf[:]))
+			return retout,err
+		case e:= <-res.err:
 			err = e
-			break
+			return retout,err
 		}
 	}
 
 	return retout,err
 }
 
-func readResponse(cgi *FCGIClient,rec *record) {
-
-	err1 := rec.read(cgi.rwc)
-	//if !keep-alive the end has EOF
-	if err1 != nil {
-		if err1 != io.EOF {
-			rec.err <- err1
-		}else{
-			rec.received <- true
+func readResponse(cgi *FCGIClient,res *ResponseContent) {
+	//bb := Read(cgi.rwc)
+	//fmt.Println(string(bb[:]))
+	for {
+		rec := &record{}
+		err1 := rec.read(cgi.rwc)
+		//if !keep-alive the end has EOF
+		if err1 != nil {
+			if err1 != io.EOF {
+				res.err <- err1
+			} else {
+				res.received <- true
+			}
+			break
 		}
-	}else {
-		rec.received <- true
+		//fmt.Println(rec.h.Type)
+		switch {
+		case rec.h.Type == typeStdout:
+			res.buf = append(res.buf, rec.content()...)
+			//fmt.Println(string(rec.buf[:]))
+		case rec.h.Type == typeStderr:
+			//fmt.Println(string(rec.buf[:]))
+			res.buf = append(res.buf, rec.content()...)
+		case rec.h.Type == typeEndRequest:
+			//if keep-alive
+			//It's had return
+			//But connection Not close
+			//fmt.Println("end")
+			//fmt.Println(string(rec.buf[:]))
+			res.buf = append(res.content(), rec.content()...)
+			res.received <- true
+			return
+		default:
+			//fallthrough
+		}
 	}
-	//switch {
-	//case rec.h.Type == typeStdout:
-	//	rec.content() = append(rec.content(), rec.content()...)
-	//case rec.h.Type == typeStderr:
-	//	rec.content = append(rec.content(), rec.content()...)
-	//case rec.h.Type == typeEndRequest:
-	//	//if keep-alive
-	//	//It's had return
-	//	//But connection Not close
-	//	retout = append(retout, rec.content()...)
-	//	return
-	//default:
-	//	//fallthrough
-	//}
 }

@@ -5,28 +5,37 @@ import (
 	"time"
 	"log"
 	"github.com/lwl1989/spinx/http/fcgi"
+	"github.com/lwl1989/spinx/conf"
 )
 
 
-
-//func HandleConn(conn net.Conn) []byte {
-//	defer conn.Close()
-//
-//	//conn.SetDeadline(time.Unix(time.Now().Unix()+5,0))
-//	//conn.SetReadDeadline(time.Unix(time.Now().Unix()+5,0))
-//
-//	return fcgi.Read(conn)
-//}
-
-
 func Do()  {
-	l, err := net.Listen("tcp", ":8888")
+	multiDo()
+	normalDo()
+}
+
+func normalDo() {
+	listen("8888")
+}
+
+func multiDo()  {
+	ports := conf.HostMaps.GetPorts()
+
+	for _,port := range ports {
+		go listen(port)
+	}
+}
+
+func listen(port string)  {
+	l, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Println("error listen:", err)
 		return
 	}
 	defer l.Close()
-	log.Println("listen ok")
+	//log.Println("listen ok")
+
+
 
 	for {
 		Conn, err := l.Accept()
