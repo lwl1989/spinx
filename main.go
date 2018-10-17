@@ -10,6 +10,7 @@ import (
 )
 
 func main(){
+
 	//str := "\n"
 	//b := bytes.NewBufferString(str).Bytes()
 	//var b1 byte = 10
@@ -22,6 +23,8 @@ func main(){
 	//fmt.Println(b)
 	//fmt.Println(b1)
 	//return
+	//str := "www.test.com:18000"
+	//fmt.Println(strings.Index(str,":"))
 	conf.GetVhosts("config/server.json")
 	http.Do()
 	return

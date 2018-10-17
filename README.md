@@ -1,4 +1,4 @@
-# spinx
+# spinx v2
 
 A golang fastcgi  proxy client.
 
@@ -14,21 +14,7 @@ Contributors:
     
     go build -o spinx main.go
     
-#### install
-
-    sudo ./spinx  -c=config_path install
-#### remove
-
-    sudo ./spinx  remove
-#### start
-
-    sudo ./spinx start
-    or
-    ./spinx -d=false -c=config_path
-
-#### stop
-
-    sudo ./spinx stop    
+    ./spinx
 
 # change log 
 
@@ -46,6 +32,12 @@ Contributors:
 2018-06-03
 
     1. keep-alive support
+
+2018-10-17
+
+    1. v2 init
+    2. self parse protocol
+
 
 # config.json demo
 
@@ -87,6 +79,7 @@ Contributors:
 
 1. change to other  faster http core
 2. keepalive timer  set
+3. proxy add
 
 # ab test
 
