@@ -44,33 +44,30 @@ const (
 	statusUnknownRole
 )
 
-type FCGIClient struct {
+type CgiClient struct {
 	mutex     sync.Mutex
 	rwc       io.ReadWriteCloser
-
 	h         header
 	buf       bytes.Buffer
-
 	request   *Request
 }
 
 //get new fcgi proxy
-func New(rule ,addr string) (fcgi *FCGIClient, err error) {
+func New(rule ,addr string) (cgi *CgiClient, err error) {
 	var conn net.Conn
-	//fastcgi_pass  127.0.0.1:9000;
-	//fastcgi_pass   unix:/dev/shm/php-cgi.sock;
+
 	if rule != "unix" {
 		rule = "tcp"
 	}
-	conn, err = net.DialTimeout(rule,addr, 3*time.Second)
-	fcgi = &FCGIClient{
+	conn, err = net.DialTimeout(rule, addr, 3*time.Second)
+	cgi = &CgiClient{
 		rwc:       conn,
 	}
 	return
 }
 
 //write content to proxy
-func (cgi *FCGIClient) writeRecord(recType uint8, reqId uint16, content []byte) (err error) {
+func (cgi *CgiClient) writeRecord(recType uint8, reqId uint16, content []byte) (err error) {
 	cgi.mutex.Lock()
 	defer cgi.mutex.Unlock()
 	cgi.buf.Reset()
@@ -90,18 +87,18 @@ func (cgi *FCGIClient) writeRecord(recType uint8, reqId uint16, content []byte) 
 }
 
 //write fcgi abort flag
-func (cgi *FCGIClient) writeAbortRequest(reqId uint16) error {
+func (cgi *CgiClient) writeAbortRequest(reqId uint16) error {
 	return cgi.writeRecord(typeAbortRequest, reqId, nil)
 }
 
 //write fcgi begin flag
-func (cgi *FCGIClient) writeBeginRequest(reqId uint16, role uint8, flags uint8) error {
+func (cgi *CgiClient) writeBeginRequest(reqId uint16, role uint8, flags uint8) error {
 	b := [8]byte{byte(role >> 8), byte(role), flags}
 	return cgi.writeRecord(typeBeginRequest, reqId, b[:])
 }
 
 //write fcgi end
-func (cgi *FCGIClient) writeEndRequest(reqId uint16, appStatus int, protocolStatus uint8) error {
+func (cgi *CgiClient) writeEndRequest(reqId uint16, appStatus int, protocolStatus uint8) error {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint32(b, uint32(appStatus))
 	b[4] = protocolStatus
@@ -109,7 +106,7 @@ func (cgi *FCGIClient) writeEndRequest(reqId uint16, appStatus int, protocolStat
 }
 
 //write fcgi header
-func (cgi *FCGIClient) writeHeader(recType uint8, reqId uint16, req *Request) (err error) {
+func (cgi *CgiClient) writeHeader(recType uint8, reqId uint16, req *Request) (err error) {
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
 
@@ -164,58 +161,35 @@ func (cgi *FCGIClient) writeHeader(recType uint8, reqId uint16, req *Request) (e
 }
 
 //write content with http content
-func (cgi *FCGIClient) writeBody(recType uint8, reqId uint16, req *Request) (err error) {
+func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *Request) (err error) {
 	// write the stdin stream
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
-	cgi.buf.Reset()
 	l,err := strconv.Atoi(req.Header["CONTENT_LENGTH"])
 	if err != nil {
 		l = 0
 	}
-	cgi.h.init(recType, reqId, l)
-
-	if err := binary.Write(&cgi.buf, binary.BigEndian, cgi.h); err != nil {
-		return err
-	}
 	if l > 0 {
-		var bs = make([]byte,0)
-		le,err := io.ReadFull(req.rwc, bs)
-		if err != nil {
-			return err
-		}
-		if le != l {
-			return errors.New("lens error")
-		}
-		if _, err := cgi.buf.Write(bs); err != nil {
-			return err
+		p := make([]byte, 1024)
+		var count int
+		for {
+			count, err = req.rwc.Read(p)
+			if err == io.EOF {
+				err = nil
+			} else if err != nil {
+				return err
+			}
+			if count == 0 {
+				break
+			}
+			_, err = writer.Write(p[:count])
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	if _, err := cgi.buf.Write(pad[:cgi.h.PaddingLength]); err != nil {
-		return err
-	}
-	_, err = cgi.rwc.Write(cgi.buf.Bytes())
 	return err
-	//b,err := req.rwc.ReadByte()
-	//fmt.Println(err, b)
-	for ;; {
-		by := make([]byte, 0)
-		by,_,err := req.rwc.ReadLine()
-
-		if len(by) == 0 {
-			break
-		}
-		if err == io.EOF {
-			break
-		}
-		_, err = writer.Write(by)
-		if err != nil {
-			return err
-		}
-	}
-	//_, err = writer.Write(req.content[:])
-	return nil
 }
 
 // bufWriter encapsulates bufio.Writer but also closes the underlying stream when
@@ -318,7 +292,7 @@ func Response(conn net.Conn, code, content string) {
 
 //if is proxy request
 //do request and get response
-func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, err error) {
+func (cgi *CgiClient) DoRequest(request *Request) (retout []byte, err error) {
 	reqId := request.Id
 	defer cgi.writeEndRequest(reqId, 200, 0)
 	defer pool.Release(reqId)
@@ -379,7 +353,7 @@ func (cgi *FCGIClient) DoRequest(request *Request) (retout []byte, err error) {
 	return retout,err
 }
 
-func readResponse(cgi *FCGIClient,res *ResponseContent) {
+func readResponse(cgi *CgiClient,res *ResponseContent) {
 	//bb := Read(cgi.rwc)
 	//fmt.Println(string(bb[:]))
 	for {

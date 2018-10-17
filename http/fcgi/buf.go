@@ -76,7 +76,7 @@ func (b *bufWriter) Close() error {
 }
 
 //get a new buf
-func newWriter(c *FCGIClient, recType uint8, reqId uint16) *bufWriter {
+func newWriter(c *CgiClient, recType uint8, reqId uint16) *bufWriter {
 	s := &streamWriter{c: c, recType: recType, reqId: reqId}
 	return &bufWriter{s, bufio.NewWriterSize(s, maxWrite)}
 }
@@ -84,7 +84,7 @@ func newWriter(c *FCGIClient, recType uint8, reqId uint16) *bufWriter {
 // streamWriter abstracts out the separation of a stream into discrete records.
 // It only writes maxWrite bytes at a time.
 type streamWriter struct {
-	c       *FCGIClient
+	c       *CgiClient
 	recType uint8
 	reqId   uint16
 }
