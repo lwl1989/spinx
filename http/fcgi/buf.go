@@ -9,6 +9,16 @@ import (
 const enter byte = 13
 const line  byte = 10
 
+type ResponseContent struct {
+	received chan bool
+	err chan error
+	buf []byte
+}
+
+func (res *ResponseContent) content() []byte  {
+	return res.buf
+}
+
 func Read(reader io.ReadCloser) []byte {
 	buffer := make([]byte, 0)
 	for {

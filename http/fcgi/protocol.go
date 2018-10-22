@@ -8,8 +8,6 @@ import (
 	"encoding/binary"
 	"time"
 	"errors"
-	"bufio"
-	"github.com/lwl1989/spinx/conf"
 	"strings"
 	"strconv"
 	"github.com/lwl1989/spinx/http"
@@ -83,7 +81,7 @@ func (cgi *CgiClient) writeRecord(recType uint8, reqId uint16, content []byte) (
 	if _, err := cgi.buf.Write(pad[:cgi.h.PaddingLength]); err != nil {
 		return err
 	}
-	_, err = cgi.Rwc.Write(cgi.buf.Bytes())
+	_, err = cgi.rwc.Write(cgi.buf.Bytes())
 	return err
 }
 
@@ -195,75 +193,31 @@ func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *http.Request) 
 
 // bufWriter encapsulates bufio.Writer but also closes the underlying stream when
 // Closed.
-func Handler(conn net.Conn) {
+func Parse(req *http.Request) (interface{},error) {
 	pool := GetIdPool(65535)
 	reqId := pool.Alloc()
 	//close connection and release id
 	defer func() {
-		conn.Close()
 		pool.Release(reqId)
 	}()
 
 
-	req := &http.Request{
-		Id: reqId,
-		KeepConn:false,
-		Rwc: bufio.NewReader(conn),
-	}
-
-	l, _, err := req.Rwc.ReadLine()
-	if err != nil {
-		Response(conn, "500", "")
-		return
-	}
-	var ok bool
-	req.Method, req.RequestURI, req.Proto, ok = ParseRequestLine(string(l[:]))
-	req.Method = strings.ToUpper(req.Method)
-	if !ok {
-		Response(conn, "500", "")
-		return
-	}
-	//fmt.Println(Method, RequestURI, Proto, ok)
-
-	//Host: localhost:8888
-	l, _, err = req.Rwc.ReadLine()
-	if err != nil {
-		Response(conn, "404", "")
-		return
-	}
-
-	req.Host, req.Port, ok = ParseHostLine(string(l[:]))
-	if !ok {
-		Response(conn, "404", "")
-		return
-	}
-
-	cf,err := conf.HostMaps.GetHostMap(req.Port, req.Host)
-	if err != nil {
-		Response(conn, "404", "")
-		return
-	}
-
-	req.Cf = cf
 	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
 	//最后进行转发
-
+	cf := req.Cf
 	cgi,err := New(cf.Net, cf.Addr)
-	cgi.request = req
 	if err != nil {
-		Response(conn, "502", err.Error())
-		return
+		return nil,http.GetError(502, "远端server连接失败"+err.Error())
 	}
-
+	cgi.request = req
 	content, err := cgi.DoRequest(req)
 
 	if err != nil {
-		Response(conn, "500", err.Error())
-		return
+		return nil,http.GetError(502, "远端server请求失败"+err.Error())
 	}
 
 	content = append(bytes.NewBufferString("HTTP/1.1 200").Bytes(), content...)
-	conn.Write(content)
+	return content, err
 }
 
 func Response(conn net.Conn, code, content string) {
