@@ -1,4 +1,9 @@
-package fcgi
+package http
+
+import (
+	"bytes"
+	"net"
+)
 
 type ResponseContent struct {
 	received chan bool
@@ -8,4 +13,8 @@ type ResponseContent struct {
 
 func (res *ResponseContent) content() []byte  {
 	return res.buf
+}
+
+func Response(conn net.Conn, err error) {
+	conn.Write(bytes.NewBufferString(err.Error()).Bytes())
 }

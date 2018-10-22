@@ -12,6 +12,7 @@ import (
 	"github.com/lwl1989/spinx/conf"
 	"strings"
 	"strconv"
+	"github.com/lwl1989/spinx/http"
 )
 
 const (
@@ -49,7 +50,7 @@ type CgiClient struct {
 	rwc       io.ReadWriteCloser
 	h         header
 	buf       bytes.Buffer
-	request   *Request
+	request   *http.Request
 }
 
 //get new fcgi proxy
@@ -82,7 +83,7 @@ func (cgi *CgiClient) writeRecord(recType uint8, reqId uint16, content []byte) (
 	if _, err := cgi.buf.Write(pad[:cgi.h.PaddingLength]); err != nil {
 		return err
 	}
-	_, err = cgi.rwc.Write(cgi.buf.Bytes())
+	_, err = cgi.Rwc.Write(cgi.buf.Bytes())
 	return err
 }
 
@@ -106,14 +107,14 @@ func (cgi *CgiClient) writeEndRequest(reqId uint16, appStatus int, protocolStatu
 }
 
 //write fcgi header
-func (cgi *CgiClient) writeHeader(recType uint8, reqId uint16, req *Request) (err error) {
+func (cgi *CgiClient) writeHeader(recType uint8, reqId uint16, req *http.Request) (err error) {
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
 
 	headers := make(map[string]string)
 	for ; ; {
 		by := make([]byte, 0)
-		by,_,err := req.rwc.ReadLine()
+		by,_,err := req.Rwc.ReadLine()
 		if len(by) == 0 {
 			break
 		}
@@ -161,7 +162,7 @@ func (cgi *CgiClient) writeHeader(recType uint8, reqId uint16, req *Request) (er
 }
 
 //write content with http content
-func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *Request) (err error) {
+func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *http.Request) (err error) {
 	// write the stdin stream
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
@@ -173,7 +174,7 @@ func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *Request) (err 
 		p := make([]byte, 1024)
 		var count int
 		for {
-			count, err = req.rwc.Read(p)
+			count, err = req.Rwc.Read(p)
 			if err == io.EOF {
 				err = nil
 			} else if err != nil {
@@ -204,13 +205,13 @@ func Handler(conn net.Conn) {
 	}()
 
 
-	req := &Request{
+	req := &http.Request{
 		Id: reqId,
 		KeepConn:false,
-		rwc: bufio.NewReader(conn),
+		Rwc: bufio.NewReader(conn),
 	}
 
-	l, _, err := req.rwc.ReadLine()
+	l, _, err := req.Rwc.ReadLine()
 	if err != nil {
 		Response(conn, "500", "")
 		return
@@ -225,7 +226,7 @@ func Handler(conn net.Conn) {
 	//fmt.Println(Method, RequestURI, Proto, ok)
 
 	//Host: localhost:8888
-	l, _, err = req.rwc.ReadLine()
+	l, _, err = req.Rwc.ReadLine()
 	if err != nil {
 		Response(conn, "404", "")
 		return
@@ -243,28 +244,7 @@ func Handler(conn net.Conn) {
 		return
 	}
 
-	req.cf = cf
-	//i := 0
-	//for ; ;  {
-	//	l, _, err = req.rwc.ReadLine()
-	//	//正文这里结束了，因为readLine会跳过换行
-	//	if len(l) == 0 {
-	//		i++
-	//		break
-	//	}
-	////	fmt.Println(string(l[:]))
-	//}
-	//HEADER END \r\n
-	//\r\n  continue
-	//BODY
-	//因此跳过的行数是1
-	//fmt.Println(i)
-	//for ; ; {
-	//	b, e := req.rwc.ReadByte()
-	//	fmt.Println(b,e)
-	//}
-
-	//response.Body = bytes.NewReader()
+	req.Cf = cf
 	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
 	//最后进行转发
 
@@ -292,7 +272,7 @@ func Response(conn net.Conn, code, content string) {
 
 //if is proxy request
 //do request and get response
-func (cgi *CgiClient) DoRequest(request *Request) (retout []byte, err error) {
+func (cgi *CgiClient) DoRequest(request *http.Request) (retout []byte, err error) {
 	reqId := request.Id
 	defer cgi.writeEndRequest(reqId, 200, 0)
 	defer pool.Release(reqId)
