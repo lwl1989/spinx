@@ -32,4 +32,13 @@ func Handler(conn net.Conn)  {
 
 	go cgi.DoRequest()
 	//todo:这里监听协程对象 返回数据
+	/**
+	for {
+		select
+	      case: <- error
+			Error(conn, error)
+	 	  case: <- IResponse
+			Success(conn, error)
+	}
+	 */
 }
