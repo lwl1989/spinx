@@ -5,17 +5,18 @@ import (
 )
 
 type IResponse interface {
-	String() (string)
+	String() string
+	Bytes() []byte
 }
 
-func Response(conn net.Conn, str string) {
-	conn.Write([]byte(str))
+func Response(conn net.Conn, buf []byte) {
+	conn.Write(buf)
 }
 
 func Error(conn net.Conn, err error) {
-	Response(conn, err.Error())
+	Response(conn, []byte(err.Error()))
 }
 
 func Success(conn net.Conn, response IResponse) {
-	Response(conn, response.String())
+	Response(conn, response.Bytes())
 }
