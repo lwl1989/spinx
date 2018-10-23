@@ -52,8 +52,11 @@ type CgiClient struct {
 }
 
 //get new fcgi proxy
-func New(rule ,addr string) (cgi *CgiClient, err error) {
+func New(req *http.Request) (cgi *CgiClient, err error) {
 	var conn net.Conn
+
+	rule := req.Cf.Net
+	addr := req.Cf.Addr
 
 	if rule != "unix" {
 		rule = "tcp"
@@ -61,6 +64,7 @@ func New(rule ,addr string) (cgi *CgiClient, err error) {
 	conn, err = net.DialTimeout(rule, addr, 3*time.Second)
 	cgi = &CgiClient{
 		rwc:       conn,
+		request:req,
 	}
 	return
 }
@@ -194,30 +198,15 @@ func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *http.Request) 
 // bufWriter encapsulates bufio.Writer but also closes the underlying stream when
 // Closed.
 func Parse(req *http.Request) (interface{},error) {
-	pool := GetIdPool(65535)
-	reqId := pool.Alloc()
-	//close connection and release id
-	defer func() {
-		pool.Release(reqId)
-	}()
+
 
 
 	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
 	//最后进行转发
-	cf := req.Cf
-	cgi,err := New(cf.Net, cf.Addr)
-	if err != nil {
-		return nil,http.GetError(502, "远端server连接失败"+err.Error())
-	}
-	cgi.request = req
-	content, err := cgi.DoRequest(req)
+	//cf := req.Cf
 
-	if err != nil {
-		return nil,http.GetError(502, "远端server请求失败"+err.Error())
-	}
 
-	content = append(bytes.NewBufferString("HTTP/1.1 200").Bytes(), content...)
-	return content, err
+
 }
 
 func Response(conn net.Conn, code, content string) {
@@ -226,13 +215,19 @@ func Response(conn net.Conn, code, content string) {
 
 //if is proxy request
 //do request and get response
-func (cgi *CgiClient) DoRequest(request *http.Request) (retout []byte, err error) {
-	reqId := request.Id
-	defer cgi.writeEndRequest(reqId, 200, 0)
-	defer pool.Release(reqId)
-	defer cgi.rwc.Close()
+func (cgi *CgiClient) DoRequest() (retout []byte, err error) {
+	pool := GetIdPool(65535)
+	reqId := pool.Alloc()
+	//close connection and release id
+	defer func() {
+		pool.Release(reqId)
+		cgi.writeEndRequest(reqId, 200, 0)
+		pool.Release(reqId)
+		cgi.rwc.Close()
+	}()
 
-	if request.KeepConn {
+	cgi.request.Id = reqId
+	if cgi.request.KeepConn {
 		//if it's keep-alive
 		//set flags 1
 		err = cgi.writeBeginRequest(reqId, roleResponder, 1)
@@ -244,15 +239,15 @@ func (cgi *CgiClient) DoRequest(request *http.Request) (retout []byte, err error
 		return nil, err
 	}
 
-	err = cgi.writeHeader(typeParams, reqId, request)
+	err = cgi.writeHeader(typeParams, reqId, cgi.request)
 	if err != nil {
 		return nil, err
 	}
 	//todo: 这个时间应该从配置中读取
 	timer := time.NewTimer(1*time.Second)
 
-	if request.Method != "GET" && request.Method != "HEAD" {
-		err = cgi.writeBody(typeStdin, reqId, request)
+	if cgi.request.Method != "GET" && cgi.request.Method != "HEAD" {
+		err = cgi.writeBody(typeStdin, reqId, cgi.request)
 		if err != nil {
 			return nil, err
 		}

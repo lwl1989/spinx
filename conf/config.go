@@ -17,6 +17,7 @@ type HostMap struct{
 	TryFiles string
 	DocumentRoot string
 	Index string
+	Proxy string
 }
 
 type Vhosts map[string]map[string]*HostMap

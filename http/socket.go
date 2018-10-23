@@ -4,7 +4,6 @@ import (
 	"net"
 	"time"
 	"log"
-	"github.com/lwl1989/spinx/http/fcgi"
 	"github.com/lwl1989/spinx/conf"
 )
 
@@ -45,6 +44,6 @@ func listen(port string)  {
 			time.Sleep(time.Second * 10)
 			continue
 		}
-		go fcgi.Handler(Conn)
+		go Handler(Conn)
 	}
 }

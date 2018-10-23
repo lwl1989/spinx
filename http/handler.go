@@ -3,18 +3,33 @@ package http
 import (
 	"bufio"
 	"net"
-	"strconv"
+	"github.com/lwl1989/spinx/http/fcgi"
 )
 
-func Handler(conn net.Conn) (req *Request) {
-	req = &Request{
+func Handler(conn net.Conn)  {
+	req := &Request{
 		KeepConn:false,
 		Rwc: bufio.NewReader(conn),
 	}
 
 	err := req.Parse()
 	if err != nil {
-		Response(conn, err)
+		Error(conn, err)
+		return
 	}
-	return req
+
+	if req.Cf.Proxy != "" {
+		//do proxy
+
+		return
+	}
+
+	cgi,err := fcgi.New(req)
+	if err != nil {
+		Error(conn, err)
+		return
+	}
+
+	go cgi.DoRequest()
+	//todo:这里监听协程对象 返回数据
 }

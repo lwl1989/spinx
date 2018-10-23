@@ -88,3 +88,6 @@ func (req *Request) Parse() (e error)  {
 	req.Cf = cf
 	return nil
 }
+func (req *Request) Do() (e error) {
+	return nil
+}

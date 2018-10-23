@@ -6,11 +6,11 @@ type IProxy interface {
 }
 
 type Proxy struct {
-	request
+
 }
 
 
 
 func Do(proxy IProxy) {
-	IProxy.Do()
+	//IProxy.Do()
 }
