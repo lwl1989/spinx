@@ -18,23 +18,14 @@ const REQUEST_URL  = "Request URL:"
 type Request struct {
 	Id  uint16
 	Rwc *bufio.Reader
-	Host string
-	Port string
+	Host, Port string
 	Header map[string]string  //必要设置的Header
 	KeepConn bool
-	pos position
 	content []byte
 	Cf	*conf.HostMap
 	Method, RequestURI, Proto string
 }
 
-//记录流的位置
-type position struct {
-	LEN    int64   //请求流的长度
-	HStart int64   //头的开始位置
-	HEnd   int64   //头的结束位置
-	BStart int64   //正文开始位置
-}
 
 func (req *Request) setHeader(key, value string)  {
 
@@ -86,6 +77,7 @@ func (req *Request) Parse() (e error)  {
 	}
 
 	req.Cf = cf
+	//根据配置是走proxy还是走fcgi还是走cache
 	return nil
 }
 func (req *Request) Do() (e error) {
