@@ -3,7 +3,7 @@ package http
 import (
 	"bufio"
 	"net"
-	"github.com/lwl1989/spinx/http/fcgi"
+	"fmt"
 )
 
 func Handler(conn net.Conn)  {
@@ -12,25 +12,31 @@ func Handler(conn net.Conn)  {
 		Rwc: bufio.NewReader(conn),
 	}
 
-	err := req.Parse()
+	cf,err := req.Parse()
 	if err != nil {
 		Error(conn, err)
 		return
 	}
 
-	if req.Cf.Proxy != "" {
-		//do proxy
-
-		return
+	pro := &Procotol{
+		Cf:cf,
+		req:req,
+		res:make(chan *Response),
 	}
-
-	cgi,err := fcgi.New(req)
+	err = pro.Do()
 	if err != nil {
 		Error(conn, err)
 		return
 	}
 
-	go cgi.DoRequest()
+	for{
+		select {
+			case res := <-pro.res:
+				fmt.Println(res)
+		}
+	}
+
+
 	//todo:这里监听协程对象 返回数据
 	/**
 	for {
