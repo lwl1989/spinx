@@ -10,7 +10,6 @@ import (
 	"errors"
 	"strings"
 	"strconv"
-	"github.com/lwl1989/spinx/http"
 )
 
 const (
@@ -48,11 +47,11 @@ type CgiClient struct {
 	rwc       io.ReadWriteCloser
 	h         header
 	buf       bytes.Buffer
-	request   *http.Request
+	request   *Request
 }
 
 //get new fcgi proxy
-func New(req *http.Request) (cgi *CgiClient, err error) {
+func New(req *Request) (cgi *CgiClient, err error) {
 	var conn net.Conn
 
 	rule := req.Cf.Net
@@ -109,7 +108,7 @@ func (cgi *CgiClient) writeEndRequest(reqId uint16, appStatus int, protocolStatu
 }
 
 //write fcgi header
-func (cgi *CgiClient) writeHeader(recType uint8, reqId uint16, req *http.Request) (err error) {
+func (cgi *CgiClient) writeHeader(recType uint8, reqId uint16, req *Request) (err error) {
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
 
@@ -164,7 +163,7 @@ func (cgi *CgiClient) writeHeader(recType uint8, reqId uint16, req *http.Request
 }
 
 //write content with http content
-func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *http.Request) (err error) {
+func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *Request) (err error) {
 	// write the stdin stream
 	writer := newWriter(cgi, recType, reqId)
 	defer writer.Close()
@@ -195,19 +194,6 @@ func (cgi *CgiClient) writeBody(recType uint8, reqId uint16, req *http.Request) 
 	return err
 }
 
-// bufWriter encapsulates bufio.Writer but also closes the underlying stream when
-// Closed.
-func Parse(req *http.Request) (interface{},error) {
-
-
-
-	//处理完成 从这里获取 host:port 得到配置  然后处理request uri
-	//最后进行转发
-	//cf := req.Cf
-
-
-
-}
 
 func Response(conn net.Conn, code, content string) {
 	conn.Write(bytes.NewBufferString("HTTP/1.1  "+code+" \r\n\r\n<h1>"+code+"</h1><p>"+content+"</p>").Bytes())

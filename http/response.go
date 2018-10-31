@@ -22,6 +22,10 @@ type IHttpResponse interface {
 	GetContent() []byte
 }
 
+type Response struct {
+	content []byte
+}
+
 func DoResponseWithChannel(res *Response) {
 
 }

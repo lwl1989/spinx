@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"github.com/lwl1989/spinx/conf"
 	"strings"
-	"github.com/lwl1989/spinx/http/fcgi"
-	"errors"
 )
 
 const enter byte = 13
@@ -17,25 +15,15 @@ const ENTER_SPACE  = "\n"
 //请求头部字符串
 const REQUEST_URL  = "Request URL:"
 
-type Procotol struct {
-	Cf	*conf.HostMap
-	req *Request
-	res chan *Response
-}
 
 type Request struct {
 	Id  uint16
 	Rwc *bufio.Reader
-	Host, Port string
-	Header map[string]string  //必要设置的Header
 	KeepConn bool
-	content []byte
-	Method, RequestURI, Proto string
+	Host, Port, Method, RequestURI, Proto string
 }
 
-type Response struct {
 
-}
 
 //执行此方法 获取 Request URL:
 //获取解析到HOST PORT 获得CGI转发的配置
@@ -77,49 +65,6 @@ func (req *Request) Parse() (cf *conf.HostMap, e error)  {
 	return cf,nil
 }
 
-// do Procotol
-// check config and get how to do
-// proxy ? cache ? fastcgi ?
-//
-func (pro *Procotol) Do() (e error) {
-	if pro.Cf.Proxy != "" {
-		//do proxy
-		return pro.DoProxy()
-
-	}
-
-	if pro.Cf.CacheRule != "" {
-		return pro.DoCache()
-	}
-
-	if pro.Cf.CgiProxy != "" {
-		return pro.DoCgi()
-	}
-
-	return errors.New("can't do this Procotol")
-}
-
-// cache
-func (pro *Procotol) DoCache() (e error) {
-
-	return nil
-}
-// read config and  proxy
-func (pro *Procotol) DoProxy() (e error) {
-
-	return nil
-}
-
-// read config and build cgi protocol
-func (pro *Procotol) DoCgi() error {
-	cgi,err := fcgi.New(pro.req)
-	if err != nil {
-		return err
-	}
-
-	cgi.DoRequest()
-	return nil
-}
 
 // parseRequestLine parses "GET /foo HTTP/1.1" into its three parts.
 func ParseRequestLine(line string) (method, requestURI, proto string, ok bool) {

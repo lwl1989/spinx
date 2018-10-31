@@ -1,23 +1,76 @@
 package http
 
 import (
-	"bufio"
-	"net/textproto"
-	"sync"
+	"errors"
+	"github.com/lwl1989/spinx/conf"
+	"github.com/lwl1989/spinx/http/fcgi"
 )
 
-var textprotoReaderPool sync.Pool
 
-func newTextprotoReader(br *bufio.Reader) *textproto.Reader {
-	if v := textprotoReaderPool.Get(); v != nil {
-		tr := v.(*textproto.Reader)
-		tr.R = br
-		return tr
+type Context struct {
+	Cf	*conf.HostMap
+	req *Request
+	res chan *Response
+	err chan error
+}
+
+// do ctxcotol
+// check config and get how to do
+// ctxxy ? cache ? fastcgi ?
+//
+func (ctx *Context) Do() {
+	if ctx.Cf.Proxy != "" {
+		ctx.DoProxy()
 	}
-	return textproto.NewReader(br)
+
+	if ctx.Cf.CacheRule != "" {
+		ctx.DoCache()
+	}
+
+	if ctx.Cf.CgiProxy != "" {
+		ctx.DoCgi()
+	}else {
+		ctx.err <- errors.New("can't do this ctxcotol")
+	}
 }
 
-func readRequest(b *bufio.Reader, deleteHostHeader bool) (err error) {
-	return nil
+// cache
+func (ctx *Context) DoCache()  {
+
+}
+// read config and  ctxxy
+func (ctx *Context) DoProxy() {
+
+
 }
 
+// read config and build cgi ctxtocol
+func (ctx *Context) DoCgi() {
+	req := &fcgi.Request{
+		Cf:ctx.Cf,
+
+
+		Rwc: ctx.req.Rwc,
+		Method: ctx.req.Method,
+		Host: ctx.req.Host,
+		Port: ctx.req.Port,
+		Header: make(map[string]string),
+		KeepConn:ctx.req.KeepConn,
+		RequestURI:ctx.req.RequestURI,
+		Proto:ctx.req.Proto,
+	}
+	cgi,err := fcgi.New(req)
+	if err != nil {
+		ctx.err <- err
+		return
+	}
+
+	content, err := cgi.DoRequest()
+	if err != nil {
+		ctx.err <- err
+		return
+	}
+	ctx.res <- &Response{
+		content: content,
+	}
+}

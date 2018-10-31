@@ -1,14 +1,12 @@
 package fcgi
 
-import "github.com/lwl1989/spinx/http"
-
 //主要用于解析http
 //并且将协议拆解成N份  主要是：头(一般头，自定义头, fast cgi协议头) 主体
 //cookies不需要解析 原包不动即可
 //通过解析结果获取到请求的配置
 //结果不需要拆解 直接发送 提高性能
 
-func buildEnv(req *http.Request) (err error, env map[string]string) {
+func buildEnv(req *Request) (err error, env map[string]string) {
 	env = make(map[string]string)
 	index := "index.php"
 	//todo:ceshi
