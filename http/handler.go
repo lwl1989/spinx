@@ -21,7 +21,7 @@ func Handler(conn net.Conn)  {
 	ctx := &Context{
 		Cf:cf,
 		req:req,
-		res:make(chan *Response),
+		res:make(chan interface{}),
 		err:make(chan error),
 	}
 	ctx.Do()
