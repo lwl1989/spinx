@@ -6,6 +6,9 @@ import (
 	"fmt"
 )
 
+//accept user request with socket
+//handler this request and parse http protocol text
+//build context obj do any thing
 func Handler(conn net.Conn)  {
 	req := &Request{
 		KeepConn:false,
