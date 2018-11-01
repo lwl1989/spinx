@@ -4,13 +4,18 @@ import (
 	"errors"
 	"github.com/lwl1989/spinx/conf"
 	"github.com/lwl1989/spinx/http/fcgi"
+	"github.com/lwl1989/spinx/http/proxy"
 )
 
-
+//context
+//has conf
+//build req
+//received chan res or chan error
+//do Response
 type Context struct {
 	Cf	*conf.HostMap
 	req *Request
-	res chan *Response
+	res chan interface{}
 	err chan error
 }
 
@@ -40,7 +45,30 @@ func (ctx *Context) DoCache()  {
 }
 // read config and  ctxxy
 func (ctx *Context) DoProxy() {
-
+	req := &proxy.Request{
+		Cf:ctx.Cf,
+		Rwc: ctx.req.Rwc,
+		Method: ctx.req.Method,
+		Host: ctx.req.Host,
+		Port: ctx.req.Port,
+		Header: make(map[string]string),
+		KeepConn:ctx.req.KeepConn,
+		RequestURI:ctx.req.RequestURI,
+		Proto:ctx.req.Proto,
+	}
+	cgi,err := proxy.New(req)
+	if err != nil {
+		ctx.err <- err
+		return
+	}
+	content, err := cgi.DoRequest()
+	if err != nil {
+		ctx.err <- err
+		return
+	}
+	ctx.res <- &Response{
+		content: content,
+	}
 
 }
 
@@ -48,8 +76,6 @@ func (ctx *Context) DoProxy() {
 func (ctx *Context) DoCgi() {
 	req := &fcgi.Request{
 		Cf:ctx.Cf,
-
-
 		Rwc: ctx.req.Rwc,
 		Method: ctx.req.Method,
 		Host: ctx.req.Host,
