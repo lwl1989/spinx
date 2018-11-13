@@ -2,7 +2,6 @@ package http
 
 import (
 	"net"
-	"net/http"
 )
 
 type IResponse interface {
