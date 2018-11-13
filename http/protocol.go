@@ -56,20 +56,17 @@ func (ctx *Context) DoProxy() {
 		RequestURI:ctx.req.RequestURI,
 		Proto:ctx.req.Proto,
 	}
-	cgi,err := proxy.New(req)
+	xy,err := proxy.New(req)
 	if err != nil {
 		ctx.err <- err
 		return
 	}
-	content, err := cgi.DoRequest()
+	err = xy.DoRequest()
 	if err != nil {
 		ctx.err <- err
 		return
 	}
-	ctx.res <- &Response{
-		content: content,
-	}
-
+	ctx.res <- xy.Res
 }
 
 // read config and build cgi ctxtocol

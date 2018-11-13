@@ -9,6 +9,7 @@ import (
 
 type ClientProxy struct {
 	Req *http.Request
+	Res *http.Response
 }
 
 type Request struct {
@@ -24,6 +25,9 @@ func New(req *Request) (client *ClientProxy, err error) {
 	reqHttp,err := http.NewRequest(req.Method, req.Cf.Proxy+req.RequestURI, req.Rwc)
 	reqHttp.Header = parseHeader(req.Header)
 
+	client = &ClientProxy{
+		Req:reqHttp,
+	}
 	return client,nil
 }
 
@@ -44,6 +48,12 @@ func parseHeader(oldHeader map[string]string) http.Header {
 	return header
 }
 
-func (client *ClientProxy) DoRequest() (content []byte, err error) {
-	return nil,nil
+func (client *ClientProxy) DoRequest() (err error) {
+	c := &http.Client{}
+	client.Res,err = c.Do(client.Req)
+	if err != nil {
+		return err
+	}
+
+	return err
 }

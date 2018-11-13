@@ -2,6 +2,7 @@ package http
 
 import (
 	"net"
+	"net/http"
 )
 
 type IResponse interface {
@@ -26,8 +27,12 @@ type Response struct {
 	content []byte
 }
 
-func DoResponseWithChannel(res *Response) {
+func (response *Response) Bytes() []byte {
+	return nil
+}
 
+func (response *Response) String() string {
+	return ""
 }
 
 func DoResponse(conn net.Conn, buf []byte) {

@@ -3,7 +3,9 @@ package http
 import (
 	"bufio"
 	"net"
-	"fmt"
+	"net/http"
+	"errors"
+	"reflect"
 )
 
 //accept user request with socket
@@ -32,7 +34,20 @@ func Handler(conn net.Conn)  {
 	for{
 		select {
 			case res := <-ctx.res:
-				fmt.Println(res)
+				switch res.(type) {
+					case error:
+						Error(conn, err)
+						break
+					case *http.Response:
+						rs := res.(*http.Response)
+						rs.Write(conn)
+						break
+					case *Response:
+						Success(conn, res.(*Response))
+						break
+					default:
+						Error(conn, errors.New("not support with type "+reflect.TypeOf(res).String()))
+				}
 			case err := <-ctx.err:
 				Error(conn, err)
 		}
